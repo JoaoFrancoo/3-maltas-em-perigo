@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "8040199454",
+    "project_id": "maltas-em-perigo",
+    "storage_bucket": "maltas-em-perigo.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:8040199454:android:60868c8d2af8ac1cde050f",
+        "android_client_info": {
+          "package_name": "com.example.a3_maltas_em_perigo_n1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCuGnZkEJQ1-jiZQPPhWVRGK619H-og-0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
