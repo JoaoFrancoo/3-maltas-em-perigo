@@ -25,7 +25,7 @@
             android:textSize="55sp" />
 
         <EditText
-            android:id="@+id/editTextText"
+            android:id="@+id/txtNomeUser"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
@@ -37,7 +37,7 @@
             android:textColorHint="@color/white" />
 
         <EditText
-            android:id="@+id/editTextText2"
+            android:id="@+id/txtPassUser"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
@@ -50,6 +50,14 @@
             android:textColorHint="@color/white" />
 
         <TextView
+            android:id="@+id/txterro"
+            android:layout_width="match_parent"
+            android:layout_gravity="center"
+            android:textColor="@color/red"
+            android:layout_height="wrap_content"
+            android:text="" />
+
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="15dp"
@@ -60,7 +68,7 @@
             android:textSize="15dp" />
 
         <Button
-            android:id="@+id/button"
+            android:id="@+id/btnsubmit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
@@ -69,6 +77,13 @@
             android:paddingStart="90sp"
             android:paddingEnd="90sp"
             android:text="Entrar" />
+
+        <TextView
+            android:id="@+id/msgCriado"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="" />
+
 
     </LinearLayout>
 

@@ -2,6 +2,9 @@ package com.example.a3_maltas_em_perigo_n1
 
 import android.os.Bundle
 import android.util.Log
+import android.widget.Button
+import android.widget.EditText
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -20,36 +23,61 @@ class MainActivity : AppCompatActivity() {
         // Inicialize o Firestore
         db = FirebaseFirestore.getInstance()
 
-        // Adicionar um documento à coleção "users"
-        val user = hashMapOf(
-            "first" to "Ada",
-            "last" to "Lovelace",
-            "born" to 1815
-        )
+        val editTextFirstName = findViewById<EditText>(R.id.txtNomeUser)
+        val editTextPassUser = findViewById<EditText>(R.id.txtPassUser)
+        val mensagem = findViewById<TextView>(R.id.txterro)
+        val submit = findViewById<Button>(R.id.btnsubmit)
 
-        db.collection("users")
-            .add(user)
-            .addOnSuccessListener { documentReference ->
-                Log.d(TAG, "DocumentSnapshot added with ID: ${documentReference.id}")
+        submit.setOnClickListener {
+            val userName = editTextFirstName.text.toString()
+            val userPasse = editTextPassUser.text.toString()
 
-                // Após adicionar o documento, recuperar todos os documentos da coleção "users"
-                db.collection("users")
-                    .get()
-                    .addOnSuccessListener { result ->
-                        for (document in result) {
-                            Log.d(TAG, "${document.id} => ${document.data}")
-                        }
-                    }
-                    .addOnFailureListener { exception ->
-                        Log.w(TAG, "Error getting documents.", exception)
-                    }
+            if (userName.isEmpty() || userPasse.isEmpty()) {
+                // Lidar com campos vazios
+                val mensagemErro = "Nome de utilizador ou palavra-passe vazios"
+                mensagem.text = mensagemErro
+                return@setOnClickListener
             }
-            .addOnFailureListener { e ->
-                Log.w(TAG, "Error adding document", e)
-            }
-    }
 
-    companion object {
-        private const val TAG = "MainActivity"
+            // Consulta na coleção "users" para verificar se já existe um documento com os mesmos dados
+            db.collection("users")
+                .whereEqualTo("first", userName)
+                .whereEqualTo("pass", userPasse)
+                .get()
+                .addOnSuccessListener { documents ->
+                    if (documents.isEmpty) {
+                        // Nenhum documento com os mesmos dados foi encontrado, então podemos adicionar
+                        val user = hashMapOf(
+                            "first" to userName,
+                            "pass" to userPasse
+                        )
+
+                        db.collection("users")
+                            .add(user)
+                            .addOnSuccessListener { documentReference ->
+                                val msgCriado = findViewById<TextView>(R.id.msgCriado)
+                                msgCriado.setTextColor(resources.getColor(R.color.green))
+                                val msg = getString(R.string.mensagemFixe)
+                                msgCriado.text = msg
+                            }
+                            .addOnFailureListener { e ->
+                                val msgCriado = findViewById<TextView>(R.id.msgCriado)
+                                msgCriado.setTextColor(resources.getColor(R.color.red))
+                                val msg = getString(R.string.mensagemErro)
+                                msgCriado.text = msg
+                            }
+                    } else {
+                        // Já existe um documento com os mesmos dados na base de dados
+                        val msgCriado = findViewById<TextView>(R.id.msgCriado)
+                        msgCriado.setTextColor(resources.getColor(R.color.red))
+                        val msg = getString(R.string.dadosExistem)
+                        msgCriado.text = msg
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    Log.w("TAG", "Error getting documents: ", exception)
+                    // Lidar com falhas na consulta
+                }
+        }
     }
 }

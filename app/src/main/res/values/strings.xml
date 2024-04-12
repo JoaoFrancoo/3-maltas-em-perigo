@@ -2,4 +2,7 @@
     <string name="app_name">3-maltas-em-perigo-n1</string>
     <string name="inicio_sessao">Iniciar sessão</string>
     <string name="termos">Ver os termos de uso</string>
+    <string name="mensagemFixe">Conta criada com sucesso</string>
+    <string name="mensagemErro">Ocorreu um erro ao criar a conta</string>
+    <string name="dadosExistem">Os dados já existem</string>
 </resources>
