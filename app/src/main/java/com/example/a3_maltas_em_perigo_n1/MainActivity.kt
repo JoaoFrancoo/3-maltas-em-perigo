@@ -1,5 +1,6 @@
 package com.example.a3_maltas_em_perigo_n1
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -52,19 +53,24 @@ class MainActivity : AppCompatActivity() {
                             "pass" to userPasse
                         )
 
-                        db.collection("users")
-                            .add(user)
-                            .addOnSuccessListener { documentReference ->
-                                val msgCriado = findViewById<TextView>(R.id.msgCriado)
-                                msgCriado.setTextColor(resources.getColor(R.color.green))
-                                val msg = getString(R.string.mensagemFixe)
-                                msgCriado.text = msg
+                        auth.createUserWithEmailAndPassword(userName, userPasse)
+                            .addOnSuccessListener { authResult ->
+                                // Registro bem-sucedido
+                                val user = authResult.user
+                                user?.sendEmailVerification()
+                                    ?.addOnSuccessListener {
+                                        // E-mail de verificação enviado com sucesso
+                                        val intent = Intent(this, MainActivity2::class.java)
+                                        startActivity(intent)
+                                    }
+                                    ?.addOnFailureListener { exception ->
+                                        // Lidar com falha no envio do e-mail de verificação
+                                        Log.e("TAG", "Falha no envio do e-mail de verificação: $exception")
+                                    }
                             }
-                            .addOnFailureListener { e ->
-                                val msgCriado = findViewById<TextView>(R.id.msgCriado)
-                                msgCriado.setTextColor(resources.getColor(R.color.red))
-                                val msg = getString(R.string.mensagemErro)
-                                msgCriado.text = msg
+                            .addOnFailureListener { exception ->
+                                // Lidar com falha no registro
+                                Log.e("TAG", "Falha no registro: $exception")
                             }
                     } else {
                         // Já existe um documento com os mesmos dados na base de dados
@@ -75,7 +81,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 .addOnFailureListener { exception ->
-                    Log.w("TAG", "Error getting documents: ", exception)
+                    Log.e("TAG", "Erro ao obter documentos: ", exception)
                     // Lidar com falhas na consulta
                 }
         }

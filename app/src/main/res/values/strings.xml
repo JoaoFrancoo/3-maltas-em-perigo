@@ -5,4 +5,8 @@
     <string name="mensagemFixe">Conta criada com sucesso</string>
     <string name="mensagemErro">Ocorreu um erro ao criar a conta</string>
     <string name="dadosExistem">Os dados já existem</string>
+    <string name="nomeUser">Nome (ou email)</string>
+    <string name="UserPass">Password</string>
+    <string name="criarConta">Criar Conta</string>
+    <string name="irParaLogin">Já tem conta? Inicie sessão</string>
 </resources>
