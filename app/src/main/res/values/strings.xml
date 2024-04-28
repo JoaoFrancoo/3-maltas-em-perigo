@@ -9,4 +9,5 @@
     <string name="UserPass">Password</string>
     <string name="criarConta">Criar Conta</string>
     <string name="irParaLogin">Já tem conta? Inicie sessão</string>
+
 </resources>

@@ -84,6 +84,13 @@ class MainActivity : AppCompatActivity() {
                     Log.e("TAG", "Erro ao obter documentos: ", exception)
                     // Lidar com falhas na consulta
                 }
+            val textViewIrParaLogin = findViewById<TextView>(R.id.IrParaLogin)
+
+            textViewIrParaLogin.setOnClickListener {
+                val intent = Intent(this, MainActivity2::class.java)
+                startActivity(intent)
+            }
+
         }
     }
 }
