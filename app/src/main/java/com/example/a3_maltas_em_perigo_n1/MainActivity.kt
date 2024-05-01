@@ -28,6 +28,7 @@ class MainActivity : AppCompatActivity() {
         val editTextPassUser = findViewById<EditText>(R.id.txtPassUser)
         val mensagem = findViewById<TextView>(R.id.txterro)
         val submit = findViewById<Button>(R.id.btnsubmit)
+        val textViewIrParaLogin = findViewById<TextView>(R.id.IrParaLogin)
 
         submit.setOnClickListener {
             val userName = editTextFirstName.text.toString()
@@ -84,13 +85,11 @@ class MainActivity : AppCompatActivity() {
                     Log.e("TAG", "Erro ao obter documentos: ", exception)
                     // Lidar com falhas na consulta
                 }
-            val textViewIrParaLogin = findViewById<TextView>(R.id.IrParaLogin)
+        }
 
-            textViewIrParaLogin.setOnClickListener {
-                val intent = Intent(this, MainActivity2::class.java)
-                startActivity(intent)
-            }
-
+        textViewIrParaLogin.setOnClickListener {
+            val intent = Intent(this, MainActivity2::class.java)
+            startActivity(intent)
         }
     }
 }

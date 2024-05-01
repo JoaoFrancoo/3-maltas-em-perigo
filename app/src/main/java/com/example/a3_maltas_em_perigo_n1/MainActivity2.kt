@@ -45,7 +45,7 @@ class MainActivity2 : AppCompatActivity() {
                 .addOnCompleteListener(this) { task ->
                     if (task.isSuccessful) {
                         // Sucesso ao iniciar sessão, redirecionar para a próxima atividade
-                        val intent = Intent(this, index::class.java)
+                        val intent = Intent(this, IndexActivity::class.java)
                         startActivity(intent)
                     } else {
                         // Falha ao iniciar sessão, exibir mensagem de erro
