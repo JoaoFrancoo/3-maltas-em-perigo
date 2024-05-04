@@ -10,7 +10,6 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.annotation.Nullable
 import androidx.appcompat.app.AppCompatActivity
 import com.example.a3_maltas_em_perigo_n1.ml.ModelUnquant
 import org.tensorflow.lite.DataType
@@ -19,6 +18,7 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
+@Suppress("DEPRECATION")
 class IndexActivity : AppCompatActivity() {
 
     private lateinit var result: TextView
@@ -84,7 +84,7 @@ class IndexActivity : AppCompatActivity() {
                     maxPos = i
                 }
             }
-
+            // parte para colocar mais objetos para a IA ver (caso tenham treinado ela para mais)
             val classes = arrayOf("Peluche", "Teclado")
             result.text = classes[maxPos]
 
@@ -101,7 +101,8 @@ class IndexActivity : AppCompatActivity() {
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, @Nullable data: Intent?) {
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 1 && resultCode == RESULT_OK) {
             val imageBitmap = data?.extras?.get("data") as Bitmap
