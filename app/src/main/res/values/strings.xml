@@ -10,4 +10,9 @@
     <string name="criarConta">Criar Conta</string>
     <string name="irParaLogin">Já tem conta? Inicie sessão</string>
 
+    parte de IA
+
+    <string name="Encontramos">O que encontramos?</string>
+    <string name="Probabilidades">Probabilidades</string>
+    <string name="TirarFoto">Tira foto do que queres saber!</string>
 </resources>

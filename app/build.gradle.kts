@@ -35,6 +35,9 @@ android {
         jvmTarget = "1.8"
     }
     buildToolsVersion = "34.0.0"
+    buildFeatures {
+        mlModelBinding = true
+    }
 }
 
 dependencies {
@@ -50,8 +53,10 @@ dependencies {
         implementation("androidx.camera:camera-camera2:1.3.3")
         implementation("androidx.camera:camera-lifecycle:1.3.3")
         implementation("androidx.camera:camera-view:1.3.3")
-        implementation("org.tensorflow:tensorflow-lite:2.8.0")
+        implementation("org.tensorflow:tensorflow-lite:2.16.1")
         implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.22")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+    implementation("org.tensorflow:tensorflow-lite-metadata:0.4.4")
     testImplementation("junit:junit:4.13.2")
 
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

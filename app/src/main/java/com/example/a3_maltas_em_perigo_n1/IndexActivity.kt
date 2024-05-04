@@ -1,92 +1,132 @@
 package com.example.a3_maltas_em_perigo_n1
 
-import TensorFlowHelper
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.os.Bundle
-import androidx.activity.enableEdgeToEdge
+import android.provider.MediaStore
+import android.widget.Button
+import android.widget.ImageView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.annotation.Nullable
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import com.example.a3_maltas_em_perigo_n1.ml.ModelUnquant
+import org.tensorflow.lite.DataType
+import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 class IndexActivity : AppCompatActivity() {
 
-    private lateinit var cameraExecutor: ExecutorService
-    private lateinit var tensorflowHelper: TensorFlowHelper // Adicione essa linha
+    private lateinit var result: TextView
+    private lateinit var confidence: TextView
+    private lateinit var imageView: ImageView
+    private lateinit var picture: Button
+    private lateinit var model: ModelUnquant
+
+    private val imageSize = 224
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.index)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+
+        result = findViewById(R.id.result)
+        confidence = findViewById(R.id.confidence)
+        imageView = findViewById(R.id.imageView)
+        picture = findViewById(R.id.button)
+
+        // Create model instance
+        model = ModelUnquant.newInstance(applicationContext)
+
+        picture.setOnClickListener {
+            // Launch camera if we have permission
+            if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                startActivityForResult(cameraIntent, 1)
+            } else {
+                // Request camera permission if we don't have it.
+                requestPermissions(arrayOf(Manifest.permission.CAMERA), 100)
+            }
         }
+    }
 
-        // Inicializa a executora para a câmera
-        cameraExecutor = Executors.newSingleThreadExecutor()
-
-
-
-        // Verifica permissões da câmera
-        if (allPermissionsGranted()) {
-            startCamera()
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 100 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            startActivityForResult(cameraIntent, 1)
         } else {
-            ActivityCompat.requestPermissions(
-                this, arrayOf(Manifest.permission.CAMERA),
-                REQUEST_CODE_PERMISSIONS
-            )
+            // Handle permission denial
+            Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show()
         }
-
-        // Carrega o modelo TensorFlow Lite
-        val modelPath = "file:///android_assets/e.tflite"
-        tensorflowHelper = TensorFlowHelper(modelPath)
     }
 
-    private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+    private fun classifyImage(image: Bitmap) {
+        try {
+            // Create inputs for reference
+            val inputFeature0 = TensorBuffer.createFixedSize(intArrayOf(1, imageSize, imageSize, 3), DataType.FLOAT32)
+            val byteBuffer = image.toByteBuffer(imageSize)
+            inputFeature0.loadBuffer(byteBuffer)
 
-        cameraProviderFuture.addListener({
-            val cameraProvider = cameraProviderFuture.get()
+            // Run model inference and get result
+            val outputs = model.process(inputFeature0)
+            val outputFeature0 = outputs.getOutputFeature0AsTensorBuffer()
 
-            val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(findViewById<PreviewView>(R.id.previewView).surfaceProvider)
+            val confidences = outputFeature0.floatArray
+            var maxPos = 0
+            var maxConfidence = 0f
+            for (i in confidences.indices) {
+                if (confidences[i] > maxConfidence) {
+                    maxConfidence = confidences[i]
+                    maxPos = i
+                }
             }
 
-            val cameraSelector = CameraSelector.Builder()
-                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                .build()
+            val classes = arrayOf("Peluche", "Teclado")
+            result.text = classes[maxPos]
 
-            try {
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview
-                )
-            } catch (exc: Exception) {
-                exc.printStackTrace()
+            var s = ""
+            for (i in classes.indices) {
+                s += String.format("%s: %.1f%%\n", classes[i], confidences[i] * 100)
             }
-        }, ContextCompat.getMainExecutor(this))
+
+            confidence.text = s
+
+        } catch (e: IOException) {
+            // Handle exception
+            Toast.makeText(this, "Error running inference: $e", Toast.LENGTH_SHORT).show()
+        }
     }
 
-    private fun allPermissionsGranted() = ContextCompat.checkSelfPermission(
-        this, Manifest.permission.CAMERA
-    ) == PackageManager.PERMISSION_GRANTED
+    override fun onActivityResult(requestCode: Int, resultCode: Int, @Nullable data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 1 && resultCode == RESULT_OK) {
+            val imageBitmap = data?.extras?.get("data") as Bitmap
+            val scaledImage = Bitmap.createScaledBitmap(imageBitmap, imageSize, imageSize, false)
+            imageView.setImageBitmap(scaledImage)
+            classifyImage(scaledImage)
+        }
+    }
+}
 
-    override fun onDestroy() {
-        super.onDestroy()
-        cameraExecutor.shutdown()
+fun Bitmap.toByteBuffer(imageSize: Int): ByteBuffer {
+    val byteBuffer = ByteBuffer.allocateDirect(4 * imageSize * imageSize * 3)
+    byteBuffer.order(ByteOrder.nativeOrder())
+
+    val intValues = IntArray(imageSize * imageSize)
+    getPixels(intValues, 0, width, 0, 0, width, height)
+    var pixel = 0
+    for (i in 0 until imageSize) {
+        for (j in 0 until imageSize) {
+            val value = intValues[pixel++]
+            byteBuffer.putFloat(((value shr 16) and 0xFF) * (1f / 255f))
+            byteBuffer.putFloat(((value shr 8) and 0xFF) * (1f / 255f))
+            byteBuffer.putFloat((value and 0xFF) * (1f / 255f))
+        }
     }
 
-    companion object {
-        private const val REQUEST_CODE_PERMISSIONS = 10
-    }
+    return byteBuffer
 }
