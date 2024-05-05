@@ -1,11 +1,12 @@
 <resources>
-    <string name="app_name">3-maltas-em-perigo-n1</string>
+    <string name="app_name">SabeSó</string>
     <string name="inicio_sessao">Iniciar sessão</string>
     <string name="termos">Ver os termos de uso</string>
     <string name="mensagemFixe">Conta criada com sucesso</string>
     <string name="mensagemErro">Ocorreu um erro ao criar a conta</string>
     <string name="dadosExistem">Os dados já existem</string>
-    <string name="nomeUser">Nome (ou email)</string>
+    <string name="nomeUser">Nome</string>
+    <string name="emailUser">Email</string>
     <string name="UserPass">Password</string>
     <string name="criarConta">Criar Conta</string>
     <string name="irParaLogin">Já tem conta? Inicie sessão</string>

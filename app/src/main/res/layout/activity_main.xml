@@ -34,6 +34,19 @@
             android:hint="@string/nomeUser"
             android:inputType="text"
             android:padding="15dp"
+            android:layout_marginBottom="50dp"
+            android:textColorHint="@color/white" />
+
+        <EditText
+            android:id="@+id/txtEmailUser"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@color/black"
+            android:ems="10"
+            android:hint="@string/emailUser"
+            android:inputType="text"
+            android:padding="15dp"
             android:textColorHint="@color/white" />
 
         <EditText
@@ -90,13 +103,13 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:layout_marginTop="20dp"
+            android:clickable="true"
             android:gravity="center"
             android:paddingStart="90sp"
-            android:paddingBottom="60sp"
             android:paddingTop="30sp"
             android:paddingEnd="90sp"
-            android:clickable="true"
-            android:text="@string/irParaLogin"/>
+            android:paddingBottom="60sp"
+            android:text="@string/irParaLogin" />
 
 
     </LinearLayout>

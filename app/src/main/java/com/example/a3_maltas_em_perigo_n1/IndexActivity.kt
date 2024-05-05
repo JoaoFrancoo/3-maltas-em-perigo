@@ -6,11 +6,15 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.FirebaseFirestore
 import com.example.a3_maltas_em_perigo_n1.ml.ModelUnquant
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
@@ -26,12 +30,20 @@ class IndexActivity : AppCompatActivity() {
     private lateinit var imageView: ImageView
     private lateinit var picture: Button
     private lateinit var model: ModelUnquant
+    private lateinit var auth: FirebaseAuth
+    private lateinit var db: FirebaseFirestore
 
     private val imageSize = 224
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.index)
+
+        // Inicialize o Firebase Authentication
+        auth = FirebaseAuth.getInstance()
+
+        // Inicialize o Firestore
+        db = FirebaseFirestore.getInstance()
 
         result = findViewById(R.id.result)
         confidence = findViewById(R.id.confidence)
@@ -94,6 +106,17 @@ class IndexActivity : AppCompatActivity() {
             }
 
             confidence.text = s
+
+            // Verificar se o usuário está autenticado e mostrar o nome de usuário no logcat
+            val user = auth.currentUser
+            if (user != null) {
+                val nomeUsuario = user.displayName
+                if (nomeUsuario != null) {
+                    Log.d("IndexActivity", "Nome do usuário: $nomeUsuario")
+                } else {
+                    Log.e("IndexActivity", "Nome do usuário não está definido.")
+                }
+            }
 
         } catch (e: IOException) {
             // Handle exception

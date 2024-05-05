@@ -1,5 +1,6 @@
 package com.example.a3_maltas_em_perigo_n1
 
+import android.content.ContentValues.TAG
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -8,6 +9,7 @@ import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
 
 class MainActivity : AppCompatActivity() {
@@ -26,38 +28,46 @@ class MainActivity : AppCompatActivity() {
 
         val editTextFirstName = findViewById<EditText>(R.id.txtNomeUser)
         val editTextPassUser = findViewById<EditText>(R.id.txtPassUser)
+        val editTextEmail = findViewById<EditText>(R.id.txtEmailUser)
         val mensagem = findViewById<TextView>(R.id.txterro)
         val submit = findViewById<Button>(R.id.btnsubmit)
         val textViewIrParaLogin = findViewById<TextView>(R.id.IrParaLogin)
 
         submit.setOnClickListener {
             val userName = editTextFirstName.text.toString()
+            val userEmail = editTextEmail.text.toString()
             val userPasse = editTextPassUser.text.toString()
 
-            if (userName.isEmpty() || userPasse.isEmpty()) {
+            if (userName.isEmpty() || userEmail.isEmpty() || userPasse.isEmpty()) {
                 // Lidar com campos vazios
-                val mensagemErro = "Nome de utilizador ou palavra-passe vazios"
+                val mensagemErro = "Por favor, preencha todos os campos."
                 mensagem.text = mensagemErro
                 return@setOnClickListener
             }
 
             // Consulta na coleção "users" para verificar se já existe um documento com os mesmos dados
             db.collection("users")
-                .whereEqualTo("first", userName)
-                .whereEqualTo("pass", userPasse)
+                .whereEqualTo("email", userEmail)
                 .get()
                 .addOnSuccessListener { documents ->
                     if (documents.isEmpty) {
-                        // Nenhum documento com os mesmos dados foi encontrado, então podemos adicionar
-                        val user = hashMapOf(
-                            "first" to userName,
-                            "pass" to userPasse
-                        )
-
-                        auth.createUserWithEmailAndPassword(userName, userPasse)
+                        // Nenhum documento com o mesmo email foi encontrado, então podemos adicionar
+                        auth.createUserWithEmailAndPassword(userEmail, userPasse)
                             .addOnSuccessListener { authResult ->
                                 // Registro bem-sucedido
                                 val user = authResult.user
+                                // Agora, adicionamos o nome ao perfil do usuário
+                                val profileUpdates = UserProfileChangeRequest.Builder()
+                                    .setDisplayName(userName)
+                                    .build()
+
+                                user?.updateProfile(profileUpdates)
+                                    ?.addOnCompleteListener { task ->
+                                        if (task.isSuccessful) {
+                                            Log.d(TAG, "Nome de usuário atualizado com sucesso.")
+                                        }
+                                    }
+
                                 user?.sendEmailVerification()
                                     ?.addOnSuccessListener {
                                         // E-mail de verificação enviado com sucesso
@@ -74,7 +84,7 @@ class MainActivity : AppCompatActivity() {
                                 Log.e("TAG", "Falha no registro: $exception")
                             }
                     } else {
-                        // Já existe um documento com os mesmos dados na base de dados
+                        // Já existe um documento com o mesmo email na base de dados
                         val msgCriado = findViewById<TextView>(R.id.msgCriado)
                         msgCriado.setTextColor(resources.getColor(R.color.red))
                         val msg = getString(R.string.dadosExistem)
@@ -86,10 +96,14 @@ class MainActivity : AppCompatActivity() {
                     // Lidar com falhas na consulta
                 }
         }
+        val user = FirebaseAuth.getInstance().currentUser
+
+// Verifica se o usuário não é nulo e se o nome está definido
 
         textViewIrParaLogin.setOnClickListener {
             val intent = Intent(this, MainActivity2::class.java)
             startActivity(intent)
         }
     }
+
 }

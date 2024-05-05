@@ -52,6 +52,7 @@ class MainActivity2 : AppCompatActivity() {
                         mensagem.text = "Falha ao iniciar sessão. Verifique o nome de utilizador e a palavra-passe."
                         Log.e("TAG", "signInWithEmail:failure", task.exception)
                     }
+
                 }
         }
     }
