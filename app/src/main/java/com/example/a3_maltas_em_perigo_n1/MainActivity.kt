@@ -4,15 +4,46 @@ import android.content.ContentValues.TAG
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.firebase.storage.FirebaseStorage
+import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
+
+    // Dentro do bloco pickImage.registerForActivityResult()
+    private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        // Configurar a imagem na ImageView
+        findViewById<ImageView>(R.id.imagePreview).apply {
+            setImageURI(uri)
+            visibility = View.VISIBLE // Tornar a ImageView visível para exibir a pré-visualização da imagem
+        }
+        val storageRef = FirebaseStorage.getInstance().reference
+        val imagesRef = storageRef.child("images/${UUID.randomUUID()}")
+        val uploadTask = uri?.let { imagesRef.putFile(it) }
+
+        uploadTask?.addOnSuccessListener {
+            // Imagem enviada com sucesso
+            // Agora você pode obter a URL de download da imagem
+            imagesRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                val imageUrl = downloadUri.toString()
+                // Agora você pode salvar essa URL no Firestore ou em outro lugar, para recuperar e exibir a imagem posteriormente
+            }
+        }?.addOnFailureListener { exception ->
+            // Lidar com falha no envio da imagem
+            Log.e("TAG", "Falha no envio da imagem: $exception")
+        }
+    }
+
+
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
 
@@ -32,6 +63,10 @@ class MainActivity : AppCompatActivity() {
         val mensagem = findViewById<TextView>(R.id.txterro)
         val submit = findViewById<Button>(R.id.btnsubmit)
         val textViewIrParaLogin = findViewById<TextView>(R.id.IrParaLogin)
+        val btnEscolherImagem = findViewById<Button>(R.id.btnEscolherImagem)
+        btnEscolherImagem.setOnClickListener {
+            pickImage.launch("image/*")
+        }
 
         submit.setOnClickListener {
             val userName = editTextFirstName.text.toString()
@@ -96,14 +131,10 @@ class MainActivity : AppCompatActivity() {
                     // Lidar com falhas na consulta
                 }
         }
-        val user = FirebaseAuth.getInstance().currentUser
-
-// Verifica se o usuário não é nulo e se o nome está definido
 
         textViewIrParaLogin.setOnClickListener {
             val intent = Intent(this, MainActivity2::class.java)
             startActivity(intent)
         }
     }
-
 }

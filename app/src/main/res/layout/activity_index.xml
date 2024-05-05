@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
@@ -10,50 +10,57 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@color/ns"
         android:orientation="vertical">
 
         <ImageView
             android:id="@+id/imagemApp"
             android:layout_width="match_parent"
-            android:layout_height="350dp"
+            android:layout_height="400dp"
             app:srcCompat="@drawable/ic_launcher" />
 
-        <Button
+        <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btnCadastrar"
             android:layout_width="370dp"
             android:paddingTop="20dp"
-            android:textSize="20dp"
+            android:textAllCaps="false"
+            android:textSize="30dp"
             android:paddingBottom="20dp"
             android:background="@drawable/botao_customizado"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
+            android:textColor="@color/white"
             android:layout_marginBottom="20dp"
             android:layout_marginTop="30dp"
-            android:text="Button" />
-
-        <Button
-            android:id="@+id/button6"
-            android:layout_width="370dp"
-            android:paddingTop="20dp"
-            android:textSize="20sp"
-            android:paddingBottom="20dp"
-            android:background="@drawable/botao_customizado"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginBottom="20dp"
-            android:layout_marginTop="20dp"
             android:text="@string/criarConta" />
 
-        <Button
-            android:id="@+id/button7"
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnLogin"
             android:layout_width="370dp"
             android:paddingTop="20dp"
-            android:textSize="20dp"
+            android:textAllCaps="false"
+            android:textSize="30sp"
+            android:paddingBottom="20dp"
+            android:background="@drawable/botao_customizado"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:textColor="@color/white"
+            android:layout_marginBottom="20dp"
+            android:layout_marginTop="20dp"
+            android:text="@string/inicio_sessao" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnVamosSo"
+            android:layout_width="370dp"
+            android:paddingTop="20dp"
+            android:textAllCaps="false"
+            android:textSize="30dp"
+            android:textColor="@color/white"
             android:paddingBottom="20dp"
             android:background="@drawable/botao_customizado"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:layout_marginTop="20dp"
-            android:text="Button" />
+            android:text="@string/irParaIndex" />
     </LinearLayout>
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>
