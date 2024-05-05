@@ -63,6 +63,13 @@ class IndexActivity : AppCompatActivity() {
                 requestPermissions(arrayOf(Manifest.permission.CAMERA), 100)
             }
         }
+
+        // Botão para ir para a PerfilActivity
+        val txtPerfil = findViewById<TextView>(R.id.textPerfil)
+        txtPerfil.setOnClickListener {
+            val intent = Intent(this, PerfilActivity::class.java)
+            startActivity(intent)
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {

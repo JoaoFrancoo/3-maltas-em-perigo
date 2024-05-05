@@ -6,6 +6,7 @@
     android:layout_height="match_parent"
     tools:context=".IndexActivity">
 
+    <!-- Botão para tirar foto -->
     <Button
         android:id="@+id/button"
         android:layout_width="match_parent"
@@ -16,56 +17,74 @@
         android:textAllCaps="false"
         android:textSize="21sp"
         android:textStyle="bold" />
+
+    <!-- Imagem classificada -->
     <ImageView
+        android:id="@+id/imageView"
         android:layout_width="370sp"
         android:layout_height="370sp"
         android:layout_centerHorizontal="true"
-        android:id="@+id/imageView"
         android:layout_marginTop="10sp"
         />
+
+    <!-- Texto de classificação -->
     <TextView
+        android:id="@+id/classified"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
-        android:text="@string/Encontramos"
-        android:textStyle="bold"
-        android:textSize="20sp"
-        android:id="@+id/classified"
         android:layout_below="@+id/imageView"
         android:layout_marginTop="10sp"
-        />
+        android:text="@string/Encontramos"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <!-- Resultado da classificação -->
     <TextView
+        android:id="@+id/result"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
+        android:layout_below="@+id/classified"
         android:text=""
         android:textColor="#C30000"
-        android:textStyle="bold"
         android:textSize="27sp"
-        android:id="@+id/result"
-        android:layout_below="@+id/classified"
-        />
+        android:textStyle="bold" />
+
+    <!-- Texto de probabilidades -->
     <TextView
+        android:id="@+id/confidencesText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/confidencesText"
-        android:text="@string/Probabilidades"
-        android:textStyle="bold"
-        android:textSize="20sp"
-
         android:layout_centerHorizontal="true"
         android:layout_below="@+id/result"
         android:layout_marginTop="30sp"
-        />
+        android:text="@string/Probabilidades"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <!-- Probabilidades -->
     <TextView
+        android:id="@+id/confidence"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
+        android:layout_below="@+id/confidencesText"
         android:text=""
         android:textColor="#C30000"
-        android:textSize="22sp"
-        android:id="@+id/confidence"
-        android:layout_below="@+id/confidencesText"
-        />
+        android:textSize="22sp" />
+
+    <!-- Texto "Perfil" no canto superior direito -->
+    <TextView
+        android:id="@+id/textPerfil"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Perfil"
+        android:textColor="#000000"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="20dp" />
 
 </RelativeLayout>
