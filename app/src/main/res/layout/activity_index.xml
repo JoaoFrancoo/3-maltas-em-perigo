@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".IndexActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <ImageView
+            android:id="@+id/imagemApp"
+            android:layout_width="match_parent"
+            android:layout_height="350dp"
+            app:srcCompat="@drawable/ic_launcher" />
+
+        <Button
+            android:id="@+id/btnCadastrar"
+            android:layout_width="370dp"
+            android:paddingTop="20dp"
+            android:textSize="20dp"
+            android:paddingBottom="20dp"
+            android:background="@drawable/botao_customizado"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginBottom="20dp"
+            android:layout_marginTop="30dp"
+            android:text="Button" />
+
+        <Button
+            android:id="@+id/button6"
+            android:layout_width="370dp"
+            android:paddingTop="20dp"
+            android:textSize="20sp"
+            android:paddingBottom="20dp"
+            android:background="@drawable/botao_customizado"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginBottom="20dp"
+            android:layout_marginTop="20dp"
+            android:text="@string/criarConta" />
+
+        <Button
+            android:id="@+id/button7"
+            android:layout_width="370dp"
+            android:paddingTop="20dp"
+            android:textSize="20dp"
+            android:paddingBottom="20dp"
+            android:background="@drawable/botao_customizado"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="20dp"
+            android:text="Button" />
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
