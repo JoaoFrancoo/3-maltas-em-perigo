@@ -2,6 +2,7 @@ package com.example.a3_maltas_em_perigo_n1
 
 import android.content.ContentValues.TAG
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -9,52 +10,27 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
-import androidx.activity.result.contract.ActivityResultContracts
 import com.google.firebase.storage.FirebaseStorage
 import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
 
-    // Dentro do bloco pickImage.registerForActivityResult()
-    private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        // Configurar a imagem na ImageView
-        findViewById<ImageView>(R.id.imagePreview).apply {
-            setImageURI(uri)
-            visibility = View.VISIBLE // Tornar a ImageView visível para exibir a pré-visualização da imagem
-        }
-        val storageRef = FirebaseStorage.getInstance().reference
-        val imagesRef = storageRef.child("images/${UUID.randomUUID()}")
-        val uploadTask = uri?.let { imagesRef.putFile(it) }
-
-        uploadTask?.addOnSuccessListener {
-            // Imagem enviada com sucesso
-            // Agora você pode obter a URL de download da imagem
-            imagesRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                val imageUrl = downloadUri.toString()
-                // Agora você pode salvar essa URL no Firestore ou em outro lugar, para recuperar e exibir a imagem posteriormente
-            }
-        }?.addOnFailureListener { exception ->
-            // Lidar com falha no envio da imagem
-            Log.e("TAG", "Falha no envio da imagem: $exception")
-        }
-    }
-
-
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
+    private var imageUri: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Inicialize o Firebase Authentication
         auth = FirebaseAuth.getInstance()
-
-        // Inicialize o Firestore
         db = FirebaseFirestore.getInstance()
 
         val editTextFirstName = findViewById<EditText>(R.id.txtNomeUser)
@@ -63,63 +39,74 @@ class MainActivity : AppCompatActivity() {
         val mensagem = findViewById<TextView>(R.id.txterro)
         val submit = findViewById<Button>(R.id.btnsubmit)
         val textViewIrParaLogin = findViewById<TextView>(R.id.IrParaLogin)
-        val btnEscolherImagem = findViewById<Button>(R.id.btnEscolherImagem)
-        btnEscolherImagem.setOnClickListener {
+        val imagePreview = findViewById<ImageView>(R.id.imagePreview)
+
+        Glide.with(this).load(R.drawable.perfilgen).into(imagePreview)
+
+        val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            findViewById<ImageView>(R.id.imagePreview).apply {
+                setImageURI(uri)
+                visibility = View.VISIBLE
+            }
+
+            // Atualiza a variável imageUri com a URI da imagem selecionada
+            imageUri = uri
+        }
+
+        imagePreview.setOnClickListener {
             pickImage.launch("image/*")
         }
 
         submit.setOnClickListener {
             val userName = editTextFirstName.text.toString()
             val userEmail = editTextEmail.text.toString()
-            val userPasse = editTextPassUser.text.toString()
+            val userPass = editTextPassUser.text.toString()
 
-            if (userName.isEmpty() || userEmail.isEmpty() || userPasse.isEmpty()) {
-                // Lidar com campos vazios
+            if (userName.isEmpty() || userEmail.isEmpty() || userPass.isEmpty()) {
                 val mensagemErro = "Por favor, preencha todos os campos."
                 mensagem.text = mensagemErro
                 return@setOnClickListener
             }
 
-            // Consulta na coleção "users" para verificar se já existe um documento com os mesmos dados
+            // Verifica se o utilizador já existe no Firestore
             db.collection("users")
                 .whereEqualTo("email", userEmail)
                 .get()
                 .addOnSuccessListener { documents ->
                     if (documents.isEmpty) {
-                        // Nenhum documento com o mesmo email foi encontrado, então podemos adicionar
-                        auth.createUserWithEmailAndPassword(userEmail, userPasse)
+                        // Cria um novo utilizador no Firebase Authentication
+                        auth.createUserWithEmailAndPassword(userEmail, userPass)
                             .addOnSuccessListener { authResult ->
-                                // Registro bem-sucedido
                                 val user = authResult.user
-                                // Agora, adicionamos o nome ao perfil do usuário
-                                val profileUpdates = UserProfileChangeRequest.Builder()
-                                    .setDisplayName(userName)
-                                    .build()
 
-                                user?.updateProfile(profileUpdates)
-                                    ?.addOnCompleteListener { task ->
-                                        if (task.isSuccessful) {
-                                            Log.d(TAG, "Nome de usuário atualizado com sucesso.")
+                                // Guarda o URI da imagem no Firestore
+                                user?.let { it1 ->
+                                    // Salva o URI da imagem como uma string
+                                    val imageUriString = imageUri.toString()
+
+                                    // Salva os dados do usuário, incluindo o URI da imagem, no Firestore
+                                    db.collection("users")
+                                        .document(it1.uid)
+                                        .set(mapOf(
+                                            "name" to userName,
+                                            "email" to userEmail,
+                                            "imageUri" to imageUriString // Salva o URI da imagem como uma string
+                                        ))
+                                        .addOnSuccessListener {
+                                            Log.d(TAG, "URI da imagem adicionado com sucesso ao Firestore.")
+
+                                            // Após salvar o URI da imagem, faça o upload da imagem para o Firebase Storage
+                                            uploadImageToStorage(user, userName, userEmail)
                                         }
-                                    }
-
-                                user?.sendEmailVerification()
-                                    ?.addOnSuccessListener {
-                                        // E-mail de verificação enviado com sucesso
-                                        val intent = Intent(this, MainActivity2::class.java)
-                                        startActivity(intent)
-                                    }
-                                    ?.addOnFailureListener { exception ->
-                                        // Lidar com falha no envio do e-mail de verificação
-                                        Log.e("TAG", "Falha no envio do e-mail de verificação: $exception")
-                                    }
+                                        .addOnFailureListener { exception ->
+                                            Log.e(TAG, "Falha ao adicionar URI da imagem ao Firestore: $exception")
+                                        }
+                                }
                             }
                             .addOnFailureListener { exception ->
-                                // Lidar com falha no registro
-                                Log.e("TAG", "Falha no registro: $exception")
+                                Log.e(TAG, "Falha no registo: $exception")
                             }
                     } else {
-                        // Já existe um documento com o mesmo email na base de dados
                         val msgCriado = findViewById<TextView>(R.id.msgCriado)
                         msgCriado.setTextColor(resources.getColor(R.color.red))
                         val msg = getString(R.string.dadosExistem)
@@ -127,14 +114,74 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 .addOnFailureListener { exception ->
-                    Log.e("TAG", "Erro ao obter documentos: ", exception)
-                    // Lidar com falhas na consulta
+                    Log.e(TAG, "Erro ao obter documentos: ", exception)
                 }
         }
 
         textViewIrParaLogin.setOnClickListener {
             val intent = Intent(this, MainActivity2::class.java)
             startActivity(intent)
+        }
+    }
+
+    // Função para fazer upload da imagem para o Firebase Storage
+    private fun uploadImageToStorage(user: FirebaseUser?, userName: String, userEmail: String) {
+        if (imageUri != null) {
+            // Gera um nome único para a imagem
+            val imageFileName = UUID.randomUUID().toString()
+
+            // Referência ao Firebase Storage
+            val storageRef = FirebaseStorage.getInstance().reference.child("images/$imageFileName")
+
+            // Faz o upload da imagem para o Firebase Storage
+            storageRef.putFile(imageUri!!)
+                .addOnSuccessListener { taskSnapshot ->
+                    // Obtém o URL da imagem após o upload
+                    storageRef.downloadUrl.addOnSuccessListener { uri ->
+                        // URL da imagem
+                        val imageUrl = uri.toString()
+
+                        // Atualiza os dados do usuário no Firestore com o URL da imagem
+                        user?.let {
+                            it.updateProfile(UserProfileChangeRequest.Builder()
+                                .setDisplayName(userName)
+                                .setPhotoUri(uri)
+                                .build())
+                                .addOnSuccessListener {
+                                    Log.d(TAG, "Perfil de usuário atualizado com sucesso com URL da imagem.")
+
+                                    // Navega para a próxima atividade
+                                    val intent = Intent(this, MainActivity2::class.java)
+                                    startActivity(intent)
+                                    finish() // Finaliza a atividade atual
+                                }
+                                .addOnFailureListener { exception ->
+                                    Log.e(TAG, "Falha ao atualizar perfil de usuário: $exception")
+                                }
+                        }
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    Log.e(TAG, "Falha ao fazer upload da imagem: $exception")
+                }
+        } else {
+            // Se o URI da imagem for nulo, apenas atualize os dados do usuário sem a imagem
+            user?.let {
+                it.updateProfile(UserProfileChangeRequest.Builder()
+                    .setDisplayName(userName)
+                    .build())
+                    .addOnSuccessListener {
+                        Log.d(TAG, "Perfil de usuário atualizado com sucesso.")
+
+                        // Navega para a próxima atividade
+                        val intent = Intent(this, MainActivity2::class.java)
+                        startActivity(intent)
+                        finish() // Finaliza a atividade atual
+                    }
+                    .addOnFailureListener { exception ->
+                        Log.e(TAG, "Falha ao atualizar perfil de usuário: $exception")
+                    }
+            }
         }
     }
 }

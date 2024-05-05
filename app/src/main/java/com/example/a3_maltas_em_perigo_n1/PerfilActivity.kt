@@ -35,8 +35,8 @@ class PerfilActivity : AppCompatActivity() {
         if (currentUser != null) {
             val nomeUsuario = currentUser.displayName
             val emailUsuario = currentUser.email
-            findViewById<TextView>(R.id.txtNome).text = nomeUsuario
-            findViewById<TextView>(R.id.txtEmail).text = emailUsuario
+            findViewById<TextView>(R.id.txtNome).text = "Nome: $nomeUsuario"
+            findViewById<TextView>(R.id.txtEmail).text = "Email: $emailUsuario"
 
             // Carregar e exibir a imagem do perfil, se disponível
             val photoUrl = currentUser.photoUrl
