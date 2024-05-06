@@ -85,39 +85,21 @@ class MainActivity : AppCompatActivity() {
                                     val imageUriString = imageUri.toString()
 
                                     // Salva os dados do usuário, incluindo o URI da imagem, no Firestore
-                                    val userData = hashMapOf(
-                                        "name" to userName,
-                                        "email" to userEmail,
-                                        "imageUri" to imageUriString // Salva o URI da imagem como uma string
-                                    )
-
                                     db.collection("users")
                                         .document(it1.uid)
-                                        .set(userData)
+                                        .set(mapOf(
+                                            "name" to userName,
+                                            "email" to userEmail,
+                                            "imageUri" to imageUriString // Salva o URI da imagem como uma string
+                                        ))
                                         .addOnSuccessListener {
                                             Log.d(TAG, "URI da imagem adicionado com sucesso ao Firestore.")
 
-                                            // Após salvar os dados do usuário, faça o upload da imagem para o Firebase Storage
-                                            uploadImageToStorage(user, userName, userEmail)
+                                            // Após salvar o URI da imagem, faça o upload da imagem para o Firebase Storage
+                                            uploadImageToStorage(user, userName, userEmail, it1)
                                         }
                                         .addOnFailureListener { exception ->
                                             Log.e(TAG, "Falha ao adicionar URI da imagem ao Firestore: $exception")
-                                        }
-
-                                    // Adiciona informações adicionais do usuário no Firestore
-                                    val userAdditionalData = hashMapOf(
-                                        "fotos_tiradas" to 0, // Inicializa a quantidade de fotos tiradas como 0
-                                        "visualizacoes_perfil" to 0 // Inicializa o número de visualizações do perfil como 0
-                                    )
-
-                                    db.collection("user_additional_data")
-                                        .document(it1.uid)
-                                        .set(userAdditionalData)
-                                        .addOnSuccessListener {
-                                            Log.d(TAG, "Informações adicionais do usuário adicionadas com sucesso ao Firestore.")
-                                        }
-                                        .addOnFailureListener { exception ->
-                                            Log.e(TAG, "Falha ao adicionar informações adicionais do usuário ao Firestore: $exception")
                                         }
                                 }
                             }
@@ -143,64 +125,72 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Função para fazer upload da imagem para o Firebase Storage
-    private fun uploadImageToStorage(user: FirebaseUser?, userName: String, userEmail: String) {
-        if (imageUri != null) {
-            // Gera um nome único para a imagem
-            val imageFileName = UUID.randomUUID().toString()
+    private fun uploadImageToStorage(user: FirebaseUser?, userName: String, userEmail: String, firebaseUser: FirebaseUser) {
+        // Gera um nome único para a imagem
+        val imageFileName = UUID.randomUUID().toString()
 
-            // Referência ao Firebase Storage
-            val storageRef = FirebaseStorage.getInstance().reference.child("images/$imageFileName")
+        // Referência ao Firebase Storage
+        val storageRef = FirebaseStorage.getInstance().reference.child("images/$imageFileName")
 
-            // Faz o upload da imagem para o Firebase Storage
-            storageRef.putFile(imageUri!!)
-                .addOnSuccessListener { taskSnapshot ->
-                    // Obtém o URL da imagem após o upload
-                    storageRef.downloadUrl.addOnSuccessListener { uri ->
-                        // URL da imagem
-                        val imageUrl = uri.toString()
+        // Faz o upload da imagem para o Firebase Storage
+        storageRef.putFile(imageUri!!)
+            .addOnSuccessListener { taskSnapshot ->
+                // Obtém o URL da imagem após o upload
+                storageRef.downloadUrl.addOnSuccessListener { uri ->
+                    // URL da imagem
+                    val imageUrl = uri.toString()
 
-                        // Atualiza os dados do usuário no Firestore com o URL da imagem
-                        user?.let {
-                            it.updateProfile(
-                                UserProfileChangeRequest.Builder()
-                                .setDisplayName(userName)
-                                .setPhotoUri(uri)
-                                .build())
-                                .addOnSuccessListener {
-                                    Log.d(TAG, "Perfil de usuário atualizado com sucesso com URL da imagem.")
+                    // Atualiza os dados do usuário no Firestore com o URL da imagem
+                    user?.let {
+                        it.updateProfile(UserProfileChangeRequest.Builder()
+                            .setDisplayName(userName)
+                            .setPhotoUri(uri)
+                            .build())
+                            .addOnSuccessListener {
+                                Log.d(TAG, "Perfil de usuário atualizado com sucesso com URL da imagem.")
 
-                                    // Navega para a próxima atividade
-                                    val intent = Intent(this, MainActivity2::class.java)
-                                    startActivity(intent)
-                                    finish() // Finaliza a atividade atual
-                                }
-                                .addOnFailureListener { exception ->
-                                    Log.e(TAG, "Falha ao atualizar perfil de usuário: $exception")
-                                }
-                        }
+                                // Salva o URL da imagem no Firestore
+                                db.collection("users")
+                                    .document(firebaseUser.uid)
+                                    .update("imageUri", imageUrl)
+                                    .addOnSuccessListener {
+                                        Log.d(TAG, "URL da imagem adicionado com sucesso ao Firestore.")
+
+                                        // Navega para a próxima atividade
+                                        val intent = Intent(this, MainActivity2::class.java)
+                                        startActivity(intent)
+                                        finish() // Finaliza a atividade atual
+                                    }
+                                    .addOnFailureListener { exception ->
+                                        Log.e(TAG, "Falha ao adicionar URL da imagem ao Firestore: $exception")
+                                    }
+                            }
+                            .addOnFailureListener { exception ->
+                                Log.e(TAG, "Falha ao atualizar perfil de usuário: $exception")
+                            }
                     }
                 }
-                .addOnFailureListener { exception ->
-                    Log.e(TAG, "Falha ao fazer upload da imagem: $exception")
-                }
-        } else {
-            // Se o URI da imagem for nulo, apenas atualize os dados do usuário sem a imagem
-            user?.let {
-                it.updateProfile(UserProfileChangeRequest.Builder()
-                    .setDisplayName(userName)
-                    .build())
-                    .addOnSuccessListener {
-                        Log.d(TAG, "Perfil de usuário atualizado com sucesso.")
-
-                        // Navega para a próxima atividade
-                        val intent = Intent(this, MainActivity2::class.java)
-                        startActivity(intent)
-                        finish() // Finaliza a atividade atual
-                    }
-                    .addOnFailureListener { exception ->
-                        Log.e(TAG, "Falha ao atualizar perfil de usuário: $exception")
-                    }
             }
-        }
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Falha ao fazer upload da imagem: $exception")
+
+                // Se o upload falhar, continue atualizando os dados do usuário sem a imagem
+                user?.let {
+                    it.updateProfile(UserProfileChangeRequest.Builder()
+                        .setDisplayName(userName)
+                        .build())
+                        .addOnSuccessListener {
+                            Log.d(TAG, "Perfil de usuário atualizado com sucesso.")
+
+                            // Navega para a próxima atividade
+                            val intent = Intent(this, MainActivity2::class.java)
+                            startActivity(intent)
+                            finish() // Finaliza a atividade atual
+                        }
+                        .addOnFailureListener { exception ->
+                            Log.e(TAG, "Falha ao atualizar perfil de usuário: $exception")
+                        }
+                }
+            }
     }
 }
