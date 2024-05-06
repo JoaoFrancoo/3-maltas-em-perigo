@@ -24,7 +24,7 @@ class MainActivity2 : AppCompatActivity() {
         // Inicialize o Firestore
         db = FirebaseFirestore.getInstance()
 
-        val editTextFirstName = findViewById<EditText>(R.id.txtNomeUser)
+        val editTextFirstName = findViewById<EditText>(R.id.txtEmailUser)
         val editTextPassUser = findViewById<EditText>(R.id.txtPassUser)
         val mensagem = findViewById<TextView>(R.id.txterro)
         val submit = findViewById<Button>(R.id.btnsubmit)

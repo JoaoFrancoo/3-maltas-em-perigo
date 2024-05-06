@@ -35,7 +35,7 @@ class IndexActivity : AppCompatActivity() {
         // Referenciar os botões
         val btnCadastrar = findViewById<Button>(R.id.btnCadastrar)
         val btnLogin = findViewById<Button>(R.id.btnLogin)
-        val btnI = findViewById<Button>(R.id.btnVamosSo)
+        val btnVamosSo = findViewById<Button>(R.id.btnVamosSo)
 
         // Verificar se o usuário está logado
         val usuarioLogado = auth.currentUser != null
@@ -52,18 +52,19 @@ class IndexActivity : AppCompatActivity() {
             btnLogin.text = getString(R.string.inicio_sessao)
         }
 
-        // Configurar cliques nos botões
         btnCadastrar.setOnClickListener {
             startActivity(Intent(this, MainActivity::class.java))
         }
 
         btnLogin.setOnClickListener {
-            // Dependendo do estado do usuário, redirecione para diferentes atividades
             if (usuarioLogado) {
                 startActivity(Intent(this, PerfilActivity::class.java))
             } else {
                 startActivity(Intent(this, MainActivity2::class.java))
             }
+        }
+        btnVamosSo.setOnClickListener {
+            startActivity(Intent(this, DetectarImagem::class.java))
         }
     }
 }

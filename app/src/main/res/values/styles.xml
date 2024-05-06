@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="CustomFontStyle" parent="android:Widget.TextView">
+        <item name="android:fontFamily">@font/nunito_semibold</item>
+    </style>
+    <style name="CustomFontStyle2" parent="android:Widget.TextView">
+        <item name="android:fontFamily">@font/plant</item>
+    </style>
+</resources>

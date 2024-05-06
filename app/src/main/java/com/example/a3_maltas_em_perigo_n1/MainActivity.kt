@@ -85,21 +85,39 @@ class MainActivity : AppCompatActivity() {
                                     val imageUriString = imageUri.toString()
 
                                     // Salva os dados do usuário, incluindo o URI da imagem, no Firestore
+                                    val userData = hashMapOf(
+                                        "name" to userName,
+                                        "email" to userEmail,
+                                        "imageUri" to imageUriString // Salva o URI da imagem como uma string
+                                    )
+
                                     db.collection("users")
                                         .document(it1.uid)
-                                        .set(mapOf(
-                                            "name" to userName,
-                                            "email" to userEmail,
-                                            "imageUri" to imageUriString // Salva o URI da imagem como uma string
-                                        ))
+                                        .set(userData)
                                         .addOnSuccessListener {
                                             Log.d(TAG, "URI da imagem adicionado com sucesso ao Firestore.")
 
-                                            // Após salvar o URI da imagem, faça o upload da imagem para o Firebase Storage
+                                            // Após salvar os dados do usuário, faça o upload da imagem para o Firebase Storage
                                             uploadImageToStorage(user, userName, userEmail)
                                         }
                                         .addOnFailureListener { exception ->
                                             Log.e(TAG, "Falha ao adicionar URI da imagem ao Firestore: $exception")
+                                        }
+
+                                    // Adiciona informações adicionais do usuário no Firestore
+                                    val userAdditionalData = hashMapOf(
+                                        "fotos_tiradas" to 0, // Inicializa a quantidade de fotos tiradas como 0
+                                        "visualizacoes_perfil" to 0 // Inicializa o número de visualizações do perfil como 0
+                                    )
+
+                                    db.collection("user_additional_data")
+                                        .document(it1.uid)
+                                        .set(userAdditionalData)
+                                        .addOnSuccessListener {
+                                            Log.d(TAG, "Informações adicionais do usuário adicionadas com sucesso ao Firestore.")
+                                        }
+                                        .addOnFailureListener { exception ->
+                                            Log.e(TAG, "Falha ao adicionar informações adicionais do usuário ao Firestore: $exception")
                                         }
                                 }
                             }
@@ -143,7 +161,8 @@ class MainActivity : AppCompatActivity() {
 
                         // Atualiza os dados do usuário no Firestore com o URL da imagem
                         user?.let {
-                            it.updateProfile(UserProfileChangeRequest.Builder()
+                            it.updateProfile(
+                                UserProfileChangeRequest.Builder()
                                 .setDisplayName(userName)
                                 .setPhotoUri(uri)
                                 .build())
