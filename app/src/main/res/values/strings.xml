@@ -1,7 +1,9 @@
 <resources>
+
+    parte da CRUD
     <string name="app_name">SabeSó</string>
     <string name="inicio_sessao">Iniciar sessão</string>
-    <string name="termos">Ver os termos de uso</string>
+    <string name="editarPerfil">Editar Perfil</string>
     <string name="mensagemFixe">Conta criada com sucesso</string>
     <string name="mensagemErro">Ocorreu um erro ao criar a conta</string>
     <string name="dadosExistem">Os dados já existem</string>

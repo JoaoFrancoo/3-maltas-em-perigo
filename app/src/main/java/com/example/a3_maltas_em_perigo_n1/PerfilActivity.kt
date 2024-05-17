@@ -90,7 +90,7 @@ class PerfilActivity : AppCompatActivity() {
                 true
             }
             R.id.action_edit_profile -> {
-                // Abra a tela para editar o perfil
+                editarPerfil()
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -157,6 +157,9 @@ class PerfilActivity : AppCompatActivity() {
         finish()
     }
 
+    private fun editarPerfil(){
+        startActivity(Intent(this, AtualizarActivity::class.java))
+    }
     private fun exibirFotosUsuario() {
         val userDocRef = db.collection("users").document(currentUser.uid)
 

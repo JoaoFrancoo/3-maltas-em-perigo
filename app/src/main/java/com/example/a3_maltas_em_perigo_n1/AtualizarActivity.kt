@@ -1,6 +1,5 @@
 package com.example.a3_maltas_em_perigo_n1
 
-import android.content.ContentValues.TAG
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -20,8 +19,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import java.util.UUID
 
-class AtualizarActivity
-    : AppCompatActivity() {
+class AtualizarActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
@@ -30,7 +28,7 @@ class AtualizarActivity
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.atualizar)
 
         auth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
@@ -38,10 +36,9 @@ class AtualizarActivity
 
         val editTextFirstName = findViewById<EditText>(R.id.txtNomeUser)
         val editTextPassUser = findViewById<EditText>(R.id.txtPassUser)
-        val editTextEmail = findViewById<EditText>(R.id.txtEmailUser)
+        val etEmail = findViewById<EditText>(R.id.txtEmailUser)
         val mensagem = findViewById<TextView>(R.id.txterro)
         val submit = findViewById<Button>(R.id.btnsubmit)
-        val textViewIrParaLogin = findViewById<TextView>(R.id.IrParaLogin)
         val imagePreview = findViewById<ImageView>(R.id.imagePreview)
 
         if (currentUser != null) {
@@ -62,41 +59,62 @@ class AtualizarActivity
 
         submit.setOnClickListener {
             val userName = editTextFirstName.text.toString()
-            val userEmail = editTextEmail.text.toString()
+            val userEmail = etEmail.text.toString()
             val userPass = editTextPassUser.text.toString()
 
             if (userName.isEmpty() || userEmail.isEmpty() || userPass.isEmpty()) {
-                val mensagemErro = "Por favor, preencha todos os campos."
-                mensagem.text = mensagemErro
+                mensagem.text = "Por favor, preencha todos os campos."
                 return@setOnClickListener
             }
 
-            currentUser?.let { user ->
-                if (userEmail != user.email) {
-                    user.updateEmail(userEmail).addOnFailureListener { exception ->
-                        Log.e(TAG, "Falha ao atualizar email: $exception")
-                        return@addOnFailureListener
-                    }
-                }
-
-                if (userPass.isNotEmpty()) {
-                    user.updatePassword(userPass).addOnFailureListener { exception ->
-                        Log.e(TAG, "Falha ao atualizar senha: $exception")
-                        return@addOnFailureListener
-                    }
-                }
-
-                if (imageUri != null) {
-                    uploadImageToStorage(user, userName, userEmail)
-                } else {
-                    updateFirestoreUserData(user, userName, userEmail, user.photoUrl.toString())
-                }
+            if (userPass.length < 6) {
+                mensagem.text = "A senha precisa ter no mínimo 6 caracteres."
+                return@setOnClickListener
             }
-        }
 
-        textViewIrParaLogin.setOnClickListener {
-            val intent = Intent(this, MainActivity2::class.java)
-            startActivity(intent)
+            db.collection("users")
+                .whereEqualTo("name", userName)
+                .whereEqualTo("email", userEmail)
+                .get()
+                .addOnSuccessListener { documents ->
+                    if (!documents.isEmpty) {
+                        if (documents.first().data["name"] == currentUser?.displayName) {
+                            // Nome de usuário do Firebase é igual ao do editText
+                            // Permitir
+                            currentUser?.let { user ->
+                                if (userEmail != user.email) {
+                                    user.updateEmail(userEmail).addOnSuccessListener {
+                                        uploadImageToStorage(user, userName, userEmail)
+                                    }.addOnFailureListener { exception ->
+                                        mensagem.text = "O email já está em uso"
+                                    }
+                                } else {
+                                    uploadImageToStorage(user, userName, userEmail)
+                                }
+                            }
+                        } else {
+                            // Nome de usuário do Firebase é diferente do do editText
+                            mensagem.text = "Este nome de utilizador já está em uso."
+                        }
+                    } else {
+                        // Nome de usuário não existe
+                        currentUser?.let { user ->
+                            if (userEmail != user.email) {
+                                user.updateEmail(userEmail).addOnSuccessListener {
+                                    uploadImageToStorage(user, userName, userEmail)
+                                }.addOnFailureListener { exception ->
+                                    mensagem.text = "Falha ao atualizar email: ${exception.message}"
+                                }
+                            } else {
+                                uploadImageToStorage(user, userName, userEmail)
+                            }
+                        }
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    Log.e(TAG, "Falha ao verificar nome de usuário existente: $exception")
+                    mensagem.text = "Ocorreu um erro ao verificar o nome de usuário."
+                }
         }
     }
 
@@ -123,29 +141,40 @@ class AtualizarActivity
         val imageFileName = UUID.randomUUID().toString()
         val storageRef = FirebaseStorage.getInstance().reference.child("images/$imageFileName")
 
-        storageRef.putFile(imageUri!!)
-            .addOnSuccessListener { taskSnapshot ->
-                storageRef.downloadUrl.addOnSuccessListener { uri ->
-                    val imageUrl = uri.toString()
-                    user.updateProfile(UserProfileChangeRequest.Builder()
-                        .setDisplayName(userName)
-                        .setPhotoUri(uri)
-                        .build()).addOnSuccessListener {
+        imageUri?.let { uri ->
+            storageRef.putFile(uri)
+                .addOnSuccessListener { taskSnapshot ->
+                    storageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                        val imageUrl = downloadUri.toString()
+                        updateUserProfile(user, userName, imageUrl)
                         updateFirestoreUserData(user, userName, userEmail, imageUrl)
-                    }.addOnFailureListener { exception ->
-                        Log.e(TAG, "Falha ao atualizar perfil de usuário: $exception")
                     }
                 }
-            }
-            .addOnFailureListener { exception ->
-                Log.e(TAG, "Falha ao fazer upload da imagem: $exception")
-                user.updateProfile(UserProfileChangeRequest.Builder()
-                    .setDisplayName(userName)
-                    .build()).addOnSuccessListener {
+                .addOnFailureListener { exception ->
+                    Log.e(TAG, "Falha ao fazer upload da imagem: $exception")
+                    showMessage("Falha ao fazer upload da imagem.")
+                    updateUserProfile(user, userName, null)
                     updateFirestoreUserData(user, userName, userEmail, user.photoUrl.toString())
-                }.addOnFailureListener { exception ->
-                    Log.e(TAG, "Falha ao atualizar perfil de usuário: $exception")
                 }
+        } ?: run {
+            // Caso o usuário não tenha selecionado uma imagem
+            updateUserProfile(user, userName, null)
+            updateFirestoreUserData(user, userName, userEmail, user.photoUrl.toString())
+        }
+    }
+
+    private fun updateUserProfile(user: FirebaseUser, userName: String, imageUrl: String?) {
+        val profileUpdate = UserProfileChangeRequest.Builder()
+            .setDisplayName(userName)
+            .apply {
+                imageUrl?.let { setPhotoUri(Uri.parse(it)) }
+            }
+            .build()
+
+        user.updateProfile(profileUpdate)
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Falha ao atualizar perfil de usuário: $exception")
+                showMessage("Falha ao atualizar perfil de usuário.")
             }
     }
 
@@ -158,12 +187,20 @@ class AtualizarActivity
             ))
             .addOnSuccessListener {
                 Log.d(TAG, "Dados do usuário atualizados com sucesso no Firestore.")
-                val intent = Intent(this, MainActivity2::class.java)
+                val intent = Intent(this, PerfilActivity::class.java)
                 startActivity(intent)
                 finish()
             }
             .addOnFailureListener { exception ->
                 Log.e(TAG, "Falha ao atualizar dados do usuário no Firestore: $exception")
             }
+    }
+
+    private fun showMessage(message: String) {
+        findViewById<TextView>(R.id.txterro).text = message
+    }
+
+    companion object {
+        private const val TAG = "AtualizarActivity"
     }
 }

@@ -38,7 +38,7 @@
                     android:layout_marginTop="15dp"
                     android:layout_marginBottom="50dp"
                     android:padding="15dp"
-                    android:text="Alterar"
+                    android:text="@string/editarPerfil"
                     android:textColor="@color/black"
                     android:textSize="55sp" />
 
@@ -73,9 +73,9 @@
                     android:layout_gravity="center"
                     android:background="@drawable/botao_customizado"
                     android:ems="10"
+                    android:inputType="textEmailAddress"
                     android:layout_marginTop="10dp"
                     android:hint="@string/emailUser"
-                    android:inputType="text"
                     android:padding="15dp"
                     android:textColorHint="@color/white" />
 
@@ -111,7 +111,7 @@
                     android:paddingStart="90sp"
                     android:textColor="@color/white"
                     android:paddingEnd="90sp"
-                    android:text="Alterar" />
+                    android:text="@string/editarPerfil" />
 
                 <TextView
                     android:id="@+id/msgCriado"
