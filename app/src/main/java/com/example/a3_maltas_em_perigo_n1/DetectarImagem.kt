@@ -1,6 +1,7 @@
 package com.example.a3_maltas_em_perigo_n1
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.ContentValues.TAG
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -92,6 +93,7 @@ class DetectarImagem : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("DefaultLocale")
     private fun classifyImage(image: Bitmap) {
         try {
             // Create inputs for reference
