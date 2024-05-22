@@ -1,7 +1,6 @@
 package com.example.a3_maltas_em_perigo_n1
 
 import android.content.Intent
-import android.graphics.Rect
 import android.os.Bundle
 import android.util.Log
 import android.view.*
@@ -33,13 +32,12 @@ class PerfilActivity : AppCompatActivity() {
     private lateinit var conquistasAdapter: ConquistasAdapter
     private lateinit var buttonFotos: Button
     private lateinit var buttonConquistas: Button
-
+    private var viewedUserId: String? = null
+    private lateinit var bottomNavigationHandler: BottomNavigationHandler
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_perfil)
-        toolbar = findViewById(R.id.toolbar)
-        setSupportActionBar(toolbar)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -47,6 +45,10 @@ class PerfilActivity : AppCompatActivity() {
             insets
         }
 
+        bottomNavigationHandler = BottomNavigationHandler(this, findViewById(R.id.bottomNavigationView))
+
+        // Configurar a navegação com os IDs dos itens do menu
+        bottomNavigationHandler.setupWithNavigation(R.id.navigation_camera, R.id.navigation_profile, R.id.navigation_feed)
         auth = Firebase.auth
         db = FirebaseFirestore.getInstance()
         currentUser = auth.currentUser!!
@@ -62,19 +64,31 @@ class PerfilActivity : AppCompatActivity() {
         buttonConquistas = findViewById(R.id.btnConquistas)
         buttonFotos.setOnClickListener {
             Log.d("PerfilActivity", "Clicou no botão Fotos")
-            exibirFotosUsuario()
+            exibirFotosUsuario(viewedUserId)
         }
         buttonConquistas.setOnClickListener {
             Log.d("PerfilActivity", "Clicou no botão Conquistas")
-            exibirConquistasUsuario()
+            exibirConquistasUsuario(viewedUserId)
         }
 
-        exibirFotosUsuario()
+        // Verificar se um userId foi passado como extra
+        val userId = intent.getStringExtra("userId")
+        if (userId != null) {
+            viewedUserId = userId
+            exibirInformacoesUsuario(userId)
+            exibirFotosUsuario(userId)
+            exibirConquistasUsuario(userId)
+            atualizarVisualizacoesPerfil(userId)
+        } else {
+            viewedUserId = currentUser.uid
+            exibirInformacoesUsuario(currentUser.uid)
+            exibirFotosUsuario(currentUser.uid)
+            exibirConquistasUsuario(currentUser.uid)
+        }
     }
 
     override fun onResume() {
         super.onResume()
-        atualizarVisualizacoesPerfil()
         atualizarNumeroFotosTiradas()
     }
 
@@ -97,12 +111,12 @@ class PerfilActivity : AppCompatActivity() {
         }
     }
 
-    private fun exibirInformacoesUsuario() {
-        val userDocRef = db.collection("users").document(currentUser.uid)
+    private fun exibirInformacoesUsuario(userId: String) {
+        val userDocRef = db.collection("users").document(userId)
 
         userDocRef.get()
             .addOnSuccessListener { document ->
-                if (document != null) {
+                if (document != null && document.exists()) {
                     val nomeUsuario = document.getString("name")
                     val emailUsuario = document.getString("email")
                     findViewById<TextView>(R.id.txtNome).text = "Nome: $nomeUsuario"
@@ -112,8 +126,9 @@ class PerfilActivity : AppCompatActivity() {
                     Picasso.get().load(imageUri).into(findViewById<ImageView>(R.id.imgPerfil))
 
                     val visualizacoesPerfil = document.getLong("visualizacoes_perfil")
-                    findViewById<TextView>(R.id.txtVisualizacoes).text =
-                        "$visualizacoesPerfil"
+                    findViewById<TextView>(R.id.txtVisualizacoes).text = "$visualizacoesPerfil"
+                } else {
+                    Log.e("PerfilActivity", "Documento do usuário não encontrado")
                 }
             }
             .addOnFailureListener { e ->
@@ -121,16 +136,33 @@ class PerfilActivity : AppCompatActivity() {
             }
     }
 
-    private fun atualizarVisualizacoesPerfil() {
-        val userDocRef = db.collection("users").document(currentUser.uid)
+    private fun atualizarVisualizacoesPerfil(userId: String) {
+        if (userId == currentUser.uid) return
 
-        userDocRef.update("visualizacoes_perfil", FieldValue.increment(1))
-            .addOnSuccessListener {
-                Log.d("PerfilActivity", "Visualizações do perfil atualizadas com sucesso")
-                exibirInformacoesUsuario()
+        val userDocRef = db.collection("users").document(userId)
+        val profileViewsRef = userDocRef.collection("profileViews").document(currentUser.uid)
+
+        profileViewsRef.get()
+            .addOnSuccessListener { document ->
+                if (!document.exists()) {
+                    profileViewsRef.set(mapOf("timestamp" to FieldValue.serverTimestamp()))
+                        .addOnSuccessListener {
+                            userDocRef.update("visualizacoes_perfil", FieldValue.increment(1))
+                                .addOnSuccessListener {
+                                    Log.d("PerfilActivity", "Visualizações do perfil atualizadas com sucesso")
+                                    exibirInformacoesUsuario(userId)
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e("PerfilActivity", "Erro ao atualizar as visualizações do perfil: $e")
+                                }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("PerfilActivity", "Erro ao registrar visualização do perfil: $e")
+                        }
+                }
             }
             .addOnFailureListener { e ->
-                Log.e("PerfilActivity", "Erro ao atualizar as visualizações do perfil: $e")
+                Log.e("PerfilActivity", "Erro ao verificar visualização do perfil: $e")
             }
     }
 
@@ -142,8 +174,7 @@ class PerfilActivity : AppCompatActivity() {
                 if (document != null) {
                     val photoUrls = document.get("photoUrl") as? List<String>
                     val numeroFotosTiradas = photoUrls?.size ?: 0
-                    findViewById<TextView>(R.id.txtFotosTiradas).text =
-                        "$numeroFotosTiradas"
+                    findViewById<TextView>(R.id.txtFotosTiradas).text = "$numeroFotosTiradas"
                 }
             }
             .addOnFailureListener { e ->
@@ -157,11 +188,16 @@ class PerfilActivity : AppCompatActivity() {
         finish()
     }
 
-    private fun editarPerfil(){
+    private fun editarPerfil() {
         startActivity(Intent(this, AtualizarActivity::class.java))
     }
-    private fun exibirFotosUsuario() {
-        val userDocRef = db.collection("users").document(currentUser.uid)
+
+    private fun exibirFotosUsuario(userId: String? = null) {
+        val userDocRef = if (userId != null) {
+            db.collection("users").document(userId)
+        } else {
+            db.collection("users").document(currentUser.uid)
+        }
 
         userDocRef.get()
             .addOnSuccessListener { document ->
@@ -181,8 +217,12 @@ class PerfilActivity : AppCompatActivity() {
         recyclerView.adapter = FotosAdapter(fotos)
     }
 
-    private fun exibirConquistasUsuario() {
-        val userDocRef = db.collection("users").document(currentUser.uid)
+    private fun exibirConquistasUsuario(userId: String? = null) {
+        val userDocRef = if (userId != null) {
+            db.collection("users").document(userId)
+        } else {
+            db.collection("users").document(currentUser.uid)
+        }
 
         userDocRef.get()
             .addOnSuccessListener { document ->
@@ -204,7 +244,6 @@ class PerfilActivity : AppCompatActivity() {
 
     class FotosAdapter(private val fotos: List<String>) :
         RecyclerView.Adapter<FotosAdapter.ViewHolder>() {
-
         inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
             val imageView: ImageView = itemView.findViewById(R.id.imageView)
         }
@@ -248,3 +287,4 @@ class PerfilActivity : AppCompatActivity() {
         }
     }
 }
+

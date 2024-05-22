@@ -72,50 +72,45 @@ class AtualizarActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            db.collection("users")
-                .whereEqualTo("name", userName)
-                .whereEqualTo("email", userEmail)
-                .get()
-                .addOnSuccessListener { documents ->
-                    if (!documents.isEmpty) {
-                        if (documents.first().data["name"] == currentUser?.displayName) {
-                            // Nome de usuário do Firebase é igual ao do editText
-                            // Permitir
-                            currentUser?.let { user ->
-                                if (userEmail != user.email) {
-                                    user.updateEmail(userEmail).addOnSuccessListener {
-                                        uploadImageToStorage(user, userName, userEmail)
-                                    }.addOnFailureListener { exception ->
-                                        mensagem.text = "O email já está em uso"
-                                    }
-                                } else {
-                                    uploadImageToStorage(user, userName, userEmail)
-                                }
+            currentUser?.let { user ->
+                if (!user.isEmailVerified) {
+                    mensagem.text = "Por favor, verifique seu email antes de atualizar o perfil."
+                    return@setOnClickListener
+                }
+
+                db.collection("users")
+                    .whereEqualTo("name", userName)
+                    .whereEqualTo("email", userEmail)
+                    .get()
+                    .addOnSuccessListener { documents ->
+                        if (!documents.isEmpty) {
+                            if (documents.first().data["name"] == currentUser?.displayName) {
+                                // Permitir atualização
+                                updateProfile(user, userName, userEmail)
+                            } else {
+                                mensagem.text = "Este nome de utilizador já está em uso."
                             }
                         } else {
-                            // Nome de usuário do Firebase é diferente do do editText
-                            mensagem.text = "Este nome de utilizador já está em uso."
-                        }
-                    } else {
-                        // Nome de usuário não existe
-                        currentUser?.let { user ->
-                            if (userEmail != user.email) {
-                                user.updateEmail(userEmail).addOnSuccessListener {
-                                    uploadImageToStorage(user, userName, userEmail)
-                                }.addOnFailureListener { exception ->
-                                    mensagem.text = "Falha ao atualizar email: ${exception.message}"
-                                }
-                            } else {
-                                uploadImageToStorage(user, userName, userEmail)
-                            }
+                            // Nome de usuário não existe
+                            updateProfile(user, userName, userEmail)
                         }
                     }
-                }
-                .addOnFailureListener { exception ->
-                    Log.e(TAG, "Falha ao verificar nome de usuário existente: $exception")
-                    mensagem.text = "Ocorreu um erro ao verificar o nome de usuário."
-                }
+                    .addOnFailureListener { exception ->
+                        Log.e(TAG, "Falha ao verificar nome de usuário existente: $exception")
+                        mensagem.text = "Ocorreu um erro ao verificar o nome de usuário."
+                    }
+            }
         }
+    }
+
+    private fun updateProfile(user: FirebaseUser, userName: String, userEmail: String) {
+        if (userEmail != user.email) {
+            user.updateEmail(userEmail).addOnFailureListener { exception ->
+                findViewById<TextView>(R.id.txterro).text = "Falha ao atualizar email: ${exception.message}"
+                return@addOnFailureListener
+            }
+        }
+        uploadImageToStorage(user, userName, userEmail)
     }
 
     private fun loadUserData() {
@@ -157,7 +152,6 @@ class AtualizarActivity : AppCompatActivity() {
                     updateFirestoreUserData(user, userName, userEmail, user.photoUrl.toString())
                 }
         } ?: run {
-            // Caso o usuário não tenha selecionado uma imagem
             updateUserProfile(user, userName, null)
             updateFirestoreUserData(user, userName, userEmail, user.photoUrl.toString())
         }

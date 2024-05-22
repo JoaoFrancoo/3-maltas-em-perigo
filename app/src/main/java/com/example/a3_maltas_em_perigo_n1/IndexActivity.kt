@@ -64,7 +64,7 @@ class IndexActivity : AppCompatActivity() {
             }
         }
         btnVamosSo.setOnClickListener {
-            startActivity(Intent(this, DetectarImagem::class.java))
+            startActivity(Intent(this, Social::class.java))
         }
     }
 }

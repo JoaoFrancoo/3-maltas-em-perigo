@@ -9,20 +9,6 @@
     android:background="@color/ns"
     tools:context=".PerfilActivity">
 
-    <androidx.appcompat.widget.Toolbar
-        android:id="@+id/toolbar"
-        android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="@color/ns"
-        android:contentInsetEnd="0dp"
-        android:contentInsetRight="0dp"
-        app:contentInsetEnd="0dp"
-        app:contentInsetRight="0dp"
-        app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
-        app:title=""
-        app:titleTextColor="@color/verde">
-
-    </androidx.appcompat.widget.Toolbar>
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -219,8 +205,6 @@
 
     </LinearLayout>
 
-
-
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerViewFotos"
             android:layout_width="match_parent"
@@ -230,4 +214,18 @@
             android:scrollbars="vertical" />
 
 
-</LinearLayout>
+<ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1">
+
+</ScrollView>
+
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottomNavigationView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:menu="@menu/bottom_nav_menu" />
+    </LinearLayout>

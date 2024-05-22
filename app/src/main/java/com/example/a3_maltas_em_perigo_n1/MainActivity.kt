@@ -68,6 +68,11 @@ class MainActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            if (userPass.length < 6) {
+                mensagem.text = "A senha precisa ter no mínimo 6 caracteres."
+                return@setOnClickListener
+            }
+
             // Verifica se o utilizador já existe no Firestore
             db.collection("users")
                 .whereEqualTo("email", userEmail)
@@ -78,6 +83,15 @@ class MainActivity : AppCompatActivity() {
                         auth.createUserWithEmailAndPassword(userEmail, userPass)
                             .addOnSuccessListener { authResult ->
                                 val user = authResult.user
+
+                                // Envia email de verificação
+                                user?.sendEmailVerification()
+                                    ?.addOnSuccessListener {
+                                        Log.d(TAG, "Email de verificação enviado para $userEmail")
+                                    }
+                                    ?.addOnFailureListener { exception ->
+                                        Log.e(TAG, "Falha ao enviar email de verificação: $exception")
+                                    }
 
                                 // Guarda o URI da imagem no Firestore
                                 user?.let { it1 ->
