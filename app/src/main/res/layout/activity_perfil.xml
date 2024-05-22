@@ -62,6 +62,13 @@
                     android:textColor="@color/black"
                     style="@style/CustomFontStyle"
                     android:layout_marginTop="8dp"/>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnSeguir"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Seguir"
+                    android:visibility="gone" />
             </LinearLayout>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
@@ -156,7 +163,7 @@
                     android:textColor="@color/black"/>
 
                 <TextView
-                    android:id="@+id/txtAmizades"
+                    android:id="@+id/txtSeguidores"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text=""

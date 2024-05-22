@@ -85,6 +85,48 @@ class PerfilActivity : AppCompatActivity() {
             exibirFotosUsuario(currentUser.uid)
             exibirConquistasUsuario(currentUser.uid)
         }
+        // Dentro da função onCreate() ou onResume()
+        val btnSeguir = findViewById<Button>(R.id.btnSeguir)
+        val txtSeguidores = findViewById<TextView>(R.id.txtSeguidores)
+
+        if (viewedUserId != currentUser.uid) {
+            // Se visualizando o perfil de outro usuário, mostra o botão "Seguir"
+            btnSeguir.visibility = View.VISIBLE
+
+            // Verifica se o usuário logado já segue o usuário visualizado
+            val userDocRef = db.collection("users").document(viewedUserId!!)
+            userDocRef.get().addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    val seguidores = (document.get("seguidores") as? List<String>) ?: emptyList()
+                    val jaSegue = seguidores.contains(currentUser.uid)
+                    if (jaSegue) {
+                        btnSeguir.text = "Seguindo"
+                        btnSeguir.isEnabled = false
+                    } else {
+                        btnSeguir.text = "Seguir"
+                        btnSeguir.isEnabled = true
+                    }
+                    // Atualiza o número de seguidores
+                    txtSeguidores.text = "${seguidores.size}"
+                }
+            }
+
+            // Configura o clique no botão "Seguir"
+            btnSeguir.setOnClickListener {
+                userDocRef.update("seguidores", FieldValue.arrayUnion(currentUser.uid))
+                    .addOnSuccessListener {
+                        Log.d("PerfilActivity", "Usuário seguido com sucesso")
+                        btnSeguir.text = "Seguindo"
+                        btnSeguir.isEnabled = false
+                        // Atualiza o número de seguidores
+                        txtSeguidores.text = "Seguidores: ${txtSeguidores.text.split(": ")[1].toInt() + 1}"
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("PerfilActivity", "Erro ao seguir usuário: $e")
+                    }
+            }
+        }
+
     }
 
     override fun onResume() {
