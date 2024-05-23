@@ -49,6 +49,7 @@
             android:layout_marginTop="20dp"
             android:text="@string/inicio_sessao" />
 
+
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btnVamosSo"
             android:layout_width="370dp"

@@ -2,11 +2,14 @@ package com.example.a3_maltas_em_perigo_n1
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.ContentValues.TAG
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
@@ -16,6 +19,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import com.example.a3_maltas_em_perigo_n1.ml.ModelUnquant
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -31,7 +38,6 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-@Suppress("DEPRECATION")
 class DetectarImagem : AppCompatActivity() {
 
     private lateinit var result: TextView
@@ -44,15 +50,23 @@ class DetectarImagem : AppCompatActivity() {
 
     private val imageSize = 224
     private var numFotosTiradas: Int = 0
+    private val REQUEST_CODE_POST_NOTIFICATIONS = 101
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.detectarimagem)
 
-        // Inicialize o Firebase Authentication
-        auth = FirebaseAuth.getInstance()
+        // Verifique e solicite a permissão de notificações se necessário
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_CODE_POST_NOTIFICATIONS)
+            }
+        }
 
-        // Inicialize o Firestore
+        // Cria o canal de notificação
+        createNotificationChannel()
+
+        auth = FirebaseAuth.getInstance()
         db = Firebase.firestore
 
         result = findViewById(R.id.result)
@@ -60,98 +74,90 @@ class DetectarImagem : AppCompatActivity() {
         imageView = findViewById(R.id.imageView)
         picture = findViewById(R.id.button)
 
-        // Create model instance
         model = ModelUnquant.newInstance(applicationContext)
 
         picture.setOnClickListener {
-            // Launch camera if we have permission
-            if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-                startActivityForResult(cameraIntent, 1)
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                launchCamera()
             } else {
-                // Request camera permission if we don't have it.
-                requestPermissions(arrayOf(Manifest.permission.CAMERA), 100)
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 100)
             }
         }
 
-        // Botão para ir para a PerfilActivity
-        val txtPerfil = findViewById<TextView>(R.id.textPerfil)
-        txtPerfil.setOnClickListener {
-            val intent = Intent(this, PerfilActivity::class.java)
-            startActivity(intent)
+        findViewById<TextView>(R.id.textPerfil).setOnClickListener {
+            startActivity(Intent(this, PerfilActivity::class.java))
         }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "ConquistaChannel"
+            val descriptionText = "Canal para notificações de conquistas"
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel("CONQUISTA_CHANNEL_ID", name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager: NotificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun launchCamera() {
+        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        startActivityForResult(cameraIntent, 1)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 100 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-            startActivityForResult(cameraIntent, 1)
+            launchCamera()
+        } else if (requestCode == REQUEST_CODE_POST_NOTIFICATIONS && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            // Permissão de notificações concedida, você pode continuar com o envio de notificações
         } else {
-            // Handle permission denial
-            Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Permissão negada", Toast.LENGTH_SHORT).show()
         }
     }
 
     @SuppressLint("DefaultLocale")
     private fun classifyImage(image: Bitmap) {
         try {
-            // Create inputs for reference
             val inputFeature0 = TensorBuffer.createFixedSize(intArrayOf(1, imageSize, imageSize, 3), DataType.FLOAT32)
             val byteBuffer = image.toByteBuffer(imageSize)
             inputFeature0.loadBuffer(byteBuffer)
 
-            // Run model inference and get result
             val outputs = model.process(inputFeature0)
             val outputFeature0 = outputs.getOutputFeature0AsTensorBuffer()
 
             val confidences = outputFeature0.floatArray
-            var maxPos = 0
-            var maxConfidence = 0f
-            for (i in confidences.indices) {
-                if (confidences[i] > maxConfidence) {
-                    maxConfidence = confidences[i]
-                    maxPos = i
-                }
-            }
-            // parte para colocar mais objetos para a IA ver (caso tenham treinado ela para mais)
+            val maxPos = confidences.indices.maxByOrNull { confidences[it] } ?: -1
             val classes = arrayOf("Peluche", "Teclado")
-            result.text = classes[maxPos]
+            result.text = classes.getOrNull(maxPos) ?: "Unknown"
 
-            var s = ""
-            for (i in classes.indices) {
-                s += String.format("%s: %.1f%%\n", classes[i], confidences[i] * 100)
+            confidence.text = classes.indices.joinToString("\n") { i ->
+                String.format("%s: %.1f%%", classes[i], confidences[i] * 100)
             }
 
-            confidence.text = s
-
-            // Verificar se o usuário está autenticado e mostrar o nome de usuário no logcat
-            val user = auth.currentUser
-            if (user != null) {
-                val nomeUsuario = user.displayName
-                if (nomeUsuario != null) {
+            auth.currentUser?.let { user ->
+                user.displayName?.let { nomeUsuario ->
                     Log.d("IndexActivity", "Nome do usuário: $nomeUsuario")
-                } else {
-                    Log.e("IndexActivity", "Nome do usuário não está definido.")
-                }
+                } ?: Log.e("IndexActivity", "Nome do usuário não está definido.")
 
-                // Pergunta ao usuário se ele deseja guardar a imagem
-                val dialog = AlertDialog.Builder(this)
-                    .setTitle("Guardar Imagem")
-                    .setMessage("Deseja guardar esta imagem no seu perfil?")
-                    .setPositiveButton("Sim") { _, _ ->
-                        saveImageToProfile(user, image)
-                    }
-                    .setNegativeButton("Não", null)
-                    .create()
-
-                dialog.show()
+                showSaveImageDialog(user, image)
             }
 
         } catch (e: IOException) {
-            // Handle exception
             Toast.makeText(this, "Error running inference: $e", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun showSaveImageDialog(user: FirebaseUser, image: Bitmap) {
+        AlertDialog.Builder(this)
+            .setTitle("Guardar Imagem")
+            .setMessage("Deseja guardar esta imagem no seu perfil?")
+            .setPositiveButton("Sim") { _, _ -> saveImageToProfile(user, image) }
+            .setNegativeButton("Não", null)
+            .create()
+            .show()
     }
 
     @Deprecated("Deprecated in Java")
@@ -163,54 +169,23 @@ class DetectarImagem : AppCompatActivity() {
             imageView.setImageBitmap(scaledImage)
             classifyImage(scaledImage)
 
-            // Após classificar a imagem, incrementar o número de fotos tiradas
             numFotosTiradas++
-            // Conceder conquista se o número de fotos tiradas corresponder a um marco
-            concederConquistaTirarFoto(auth.currentUser!!, numFotosTiradas)
+            auth.currentUser?.let { concederConquistaTirarFoto(it, numFotosTiradas) }
         }
     }
 
     private fun saveImageToProfile(user: FirebaseUser, image: Bitmap) {
-        // Gera um nome único para a imagem
         val imageFileName = "${user.uid}_${System.currentTimeMillis()}.jpg"
-
-        // Referência ao Firebase Storage
         val storageRef = FirebaseStorage.getInstance().reference.child("imagensUser/$imageFileName")
 
-        // Converte a imagem em um byte array
         val baos = ByteArrayOutputStream()
         image.compress(Bitmap.CompressFormat.JPEG, 100, baos)
         val imageData = baos.toByteArray()
 
-        // Faz o upload da imagem para o Firebase Storage
         storageRef.putBytes(imageData)
-            .addOnSuccessListener { taskSnapshot ->
-                // Obtém o URL da imagem após o upload
+            .addOnSuccessListener {
                 storageRef.downloadUrl.addOnSuccessListener { uri ->
-                    // Adiciona o novo URL à lista existente de photoUrl no documento do usuário
-                    db.collection("users").document(user.uid)
-                        .get()
-                        .addOnSuccessListener { documentSnapshot ->
-                            val photoUrls = documentSnapshot.get("photoUrl") as? ArrayList<String> ?: ArrayList()
-                            photoUrls.add(uri.toString())
-                            // Atualiza o documento do usuário com a nova lista de photoUrl
-                            db.collection("users").document(user.uid)
-                                .update("photoUrl", photoUrls)
-                                .addOnSuccessListener {
-                                    Log.d(TAG, "URL da nova imagem do perfil salva no Firestore com sucesso.")
-                                    Toast.makeText(this, "Nova imagem do perfil salva com sucesso.", Toast.LENGTH_SHORT).show()
-                                    // Atualiza a exibição das fotos do usuário
-                                    exibirFotosUsuario()
-                                }
-                                .addOnFailureListener { exception ->
-                                    Log.e(TAG, "Falha ao salvar URL da nova imagem do perfil no Firestore: $exception")
-                                    Toast.makeText(this, "Erro ao salvar nova imagem do perfil.", Toast.LENGTH_SHORT).show()
-                                }
-                        }
-                        .addOnFailureListener { exception ->
-                            Log.e(TAG, "Falha ao obter o documento do usuário: $exception")
-                            Toast.makeText(this, "Erro ao obter documento do usuário.", Toast.LENGTH_SHORT).show()
-                        }
+                    updateUserProfileWithImageUrl(user, uri.toString())
                 }
             }
             .addOnFailureListener { exception ->
@@ -219,30 +194,75 @@ class DetectarImagem : AppCompatActivity() {
             }
     }
 
-    private fun concederConquistaTirarFoto(user: FirebaseUser, numFotosTiradas: Int) {
-        // Lista para armazenar as conquistas a serem adicionadas
-        val conquistas = mutableListOf<String>()
+    private fun updateUserProfileWithImageUrl(user: FirebaseUser, imageUrl: String) {
+        db.collection("users").document(user.uid)
+            .get()
+            .addOnSuccessListener { documentSnapshot ->
+                val photoUrls = documentSnapshot.get("photoUrl") as? ArrayList<String> ?: ArrayList()
+                photoUrls.add(imageUrl)
+                db.collection("users").document(user.uid)
+                    .update("photoUrl", photoUrls)
+                    .addOnSuccessListener {
+                        Log.d(TAG, "URL da nova imagem do perfil salva no Firestore com sucesso.")
+                        Toast.makeText(this, "Nova imagem do perfil salva com sucesso.", Toast.LENGTH_SHORT).show()
+                        saveNotificationToFollowers(user, "Seu amigo postou uma nova imagem.")
+                    }
+                    .addOnFailureListener { exception ->
+                        Log.e(TAG, "Falha ao salvar URL da nova imagem do perfil no Firestore: $exception")
+                        Toast.makeText(this, "Erro ao salvar nova imagem do perfil.", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Falha ao obter o documento do usuário: $exception")
+                Toast.makeText(this, "Erro ao obter documento do usuário.", Toast.LENGTH_SHORT).show()
+            }
+    }
 
-        // Conceder conquista com base no número de fotos tiradas
-        when (numFotosTiradas) {
-            1 -> conquistas.add("Conquista 1")
-            5 -> conquistas.add("Conquista 2")
-            10 -> conquistas.add("Conquista 3")
-            // Adicione mais casos conforme necessário
+    private fun saveNotificationToFollowers(user: FirebaseUser, message: String) {
+        val userDocRef = db.collection("users").document(user.uid)
+
+        userDocRef.get().addOnSuccessListener { document ->
+            if (document != null && document.exists()) {
+                val seguidores = document.get("seguidores") as? List<String> ?: emptyList()
+
+                seguidores.forEach { seguidorId ->
+                    val notification = hashMapOf(
+                        "message" to message,
+                        "timestamp" to System.currentTimeMillis()
+                    )
+
+                    db.collection("users").document(seguidorId).collection("notifications")
+                        .add(notification)
+                        .addOnSuccessListener {
+                            Log.d(TAG, "Notificação enviada para o seguidor $seguidorId com sucesso.")
+                        }
+                        .addOnFailureListener { exception ->
+                            Log.e(TAG, "Falha ao enviar notificação para o seguidor $seguidorId: $exception")
+                        }
+                }
+            } else {
+                Log.e(TAG, "Documento do usuário não encontrado.")
+            }
+        }.addOnFailureListener { exception ->
+            Log.e(TAG, "Falha ao obter documento do usuário: $exception")
+        }
+    }
+
+    private fun concederConquistaTirarFoto(user: FirebaseUser, numFotosTiradas: Int) {
+        val conquistas = when (numFotosTiradas) {
+            1 -> listOf("Conquista 1")
+            5 -> listOf("Conquista 2")
+            10 -> listOf("Conquista 3")
+            else -> emptyList()
         }
 
-        // Verifique se há conquistas para conceder
         if (conquistas.isNotEmpty()) {
-            // Referência ao documento do usuário
             val userDocRef = db.collection("users").document(user.uid)
-
-            // Iterar sobre cada conquista e adicioná-la ao documento do usuário
             conquistas.forEach { conquista ->
-                // Adiciona a conquista ao array no documento do usuário
                 userDocRef.update("conquistas", FieldValue.arrayUnion(conquista))
                     .addOnSuccessListener {
                         Log.d(TAG, "Conquista concedida com sucesso: $conquista")
-                        // Adicione qualquer lógica de interface do usuário necessária para refletir as novas conquistas concedidas
+                        sendLocalNotification(user, "Você ganhou a conquista: $conquista")
                     }
                     .addOnFailureListener { e ->
                         Log.e(TAG, "Erro ao conceder conquista: $conquista, ${e.message}")
@@ -250,25 +270,24 @@ class DetectarImagem : AppCompatActivity() {
             }
         }
     }
-    private fun saveImageUrlToUserDocument(user: FirebaseUser, imageUrl: String) {
-        // Atualiza o documento do usuário com a URL da imagem
-        db.collection("users").document(user.uid)
-            .update("photoUrl", imageUrl)
-            .addOnSuccessListener {
-                Log.d(TAG, "URL da imagem do perfil salva no Firestore com sucesso.")
-            }
-            .addOnFailureListener { exception ->
-                Log.e(TAG, "Falha ao salvar URL da imagem do perfil no Firestore: $exception")
-            }
-    }
 
-    private fun bitmapToUri(bitmap: Bitmap): Uri {
-        return Uri.parse(MediaStore.Images.Media.insertImage(contentResolver, bitmap, "Title", null))
-    }
+    private fun sendLocalNotification(user: FirebaseUser, message: String) {
+        val intent = Intent(this, DetectarImagem::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
-    private fun exibirFotosUsuario() {
-        // Implemente o código para exibir as fotos do usuário a partir dos URLs armazenados no Firestore
-        // Você precisará recuperar a lista de URLs de photoUrl no documento do usuário e carregar as imagens correspondentes
+        val builder = NotificationCompat.Builder(this, "CONQUISTA_CHANNEL_ID")
+            .setSmallIcon(R.drawable.ic_launcher)
+            .setContentTitle("Nova Conquista!")
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+
+        with(NotificationManagerCompat.from(this)) {
+            notify(2, builder.build())
+        }
     }
 }
 

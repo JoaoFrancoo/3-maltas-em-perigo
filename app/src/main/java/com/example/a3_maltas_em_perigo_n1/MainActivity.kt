@@ -17,6 +17,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.storage.FirebaseStorage
 import java.util.UUID
 
@@ -111,6 +112,9 @@ class MainActivity : AppCompatActivity() {
 
                                             // Após salvar o URI da imagem, faça o upload da imagem para o Firebase Storage
                                             uploadImageToStorage(user, userName, userEmail, it1)
+
+                                            // Salva o token do dispositivo
+                                            saveDeviceToken(it1.uid)
                                         }
                                         .addOnFailureListener { exception ->
                                             Log.e(TAG, "Falha ao adicionar URI da imagem ao Firestore: $exception")
@@ -135,6 +139,24 @@ class MainActivity : AppCompatActivity() {
         textViewIrParaLogin.setOnClickListener {
             val intent = Intent(this, MainActivity2::class.java)
             startActivity(intent)
+        }
+    }
+
+    private fun saveDeviceToken(userId: String) {
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val token = task.result
+                val tokenInfo = hashMapOf("token" to token)
+                db.collection("Tokens").document(userId).set(tokenInfo)
+                    .addOnSuccessListener {
+                        Log.d(TAG, "Token de dispositivo salvo com sucesso.")
+                    }
+                    .addOnFailureListener { e ->
+                        Log.w(TAG, "Erro ao salvar token de dispositivo: ", e)
+                    }
+            } else {
+                Log.w(TAG, "Falha ao obter o token de dispositivo.", task.exception)
+            }
         }
     }
 
