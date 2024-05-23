@@ -19,6 +19,7 @@
         app:cardCornerRadius="8dp"
         app:cardElevation="4dp">
 
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -204,6 +205,19 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Conquistas"
+            android:textSize="16sp"
+            android:textColor="@android:color/white"
+            android:background="@color/verde"
+            android:layout_marginStart="5dp"
+            style="@style/CustomFontStyle"
+            android:paddingVertical="12dp"/>
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnTerminarSessao"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Terminar Sessão"
             android:textSize="16sp"
             android:textColor="@android:color/white"
             android:background="@color/verde"

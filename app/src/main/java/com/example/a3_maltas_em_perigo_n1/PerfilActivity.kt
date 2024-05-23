@@ -33,8 +33,8 @@ class PerfilActivity : AppCompatActivity() {
     private lateinit var conquistasAdapter: ConquistasAdapter
     private lateinit var buttonFotos: Button
     private lateinit var buttonConquistas: Button
+    private lateinit var buttonTerminarSessao : Button
     private var viewedUserId: String? = null
-    private lateinit var bottomNavigationHandler: BottomNavigationHandler
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,6 +49,9 @@ class PerfilActivity : AppCompatActivity() {
         recyclerView = findViewById(R.id.recyclerViewFotos)
         buttonFotos = findViewById(R.id.btnFotos)
         buttonConquistas = findViewById(R.id.btnConquistas)
+        buttonTerminarSessao = findViewById(R.id.btnTerminarSessao)
+
+
 
         // Initialize adapters
         fotosAdapter = FotosAdapter(emptyList())
@@ -65,7 +68,10 @@ class PerfilActivity : AppCompatActivity() {
             Log.d("PerfilActivity", "Clicou no botão Conquistas")
             exibirConquistasUsuario(viewedUserId)
         }
-
+        buttonTerminarSessao.setOnClickListener{
+            Log.d("PerfilActivity", "Clicou no botão Terminar Sessão")
+            terminarSessao()
+        }
         // Verificar se um userId foi passado como extra
         val userId = intent.getStringExtra("userId")
         viewedUserId = userId ?: currentUser.uid
@@ -80,29 +86,6 @@ class PerfilActivity : AppCompatActivity() {
         setupSeguirButton(viewedUserId!!)
     }
 
-    override fun onResume() {
-        super.onResume()
-        atualizarNumeroFotosTiradas(viewedUserId!!)
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.toolbar_menu, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_logout -> {
-                terminarSessao()
-                true
-            }
-            R.id.action_edit_profile -> {
-                editarPerfil()
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
 
     private fun setupSeguirButton(userId: String) {
         val btnSeguir = findViewById<Button>(R.id.btnSeguir)
