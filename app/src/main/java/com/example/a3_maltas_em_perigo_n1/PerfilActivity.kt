@@ -3,13 +3,15 @@ package com.example.a3_maltas_em_perigo_n1
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import android.view.*
+import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.GridLayoutManager
@@ -26,42 +28,38 @@ class PerfilActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
     private lateinit var currentUser: FirebaseUser
-    private lateinit var toolbar: Toolbar
     private lateinit var recyclerView: RecyclerView
     private lateinit var fotosAdapter: FotosAdapter
     private lateinit var conquistasAdapter: ConquistasAdapter
     private lateinit var buttonFotos: Button
     private lateinit var buttonConquistas: Button
+    private lateinit var buttonTerminarSessao : Button
     private var viewedUserId: String? = null
-    private lateinit var bottomNavigationHandler: BottomNavigationHandler
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_perfil)
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
-
-        bottomNavigationHandler = BottomNavigationHandler(this, findViewById(R.id.bottomNavigationView))
-
-        // Configurar a navegação com os IDs dos itens do menu
-        bottomNavigationHandler.setupWithNavigation(R.id.navigation_camera, R.id.navigation_profile, R.id.navigation_feed)
+        // Initialize Firebase Auth
         auth = Firebase.auth
         db = FirebaseFirestore.getInstance()
         currentUser = auth.currentUser!!
 
+        // Initialize views
         recyclerView = findViewById(R.id.recyclerViewFotos)
+        buttonFotos = findViewById(R.id.btnFotos)
+        buttonConquistas = findViewById(R.id.btnConquistas)
+        buttonTerminarSessao = findViewById(R.id.btnTerminarSessao)
+
+
+
+        // Initialize adapters
         fotosAdapter = FotosAdapter(emptyList())
         conquistasAdapter = ConquistasAdapter(emptyList())
 
         val layoutManager = GridLayoutManager(this, 2)
         recyclerView.layoutManager = layoutManager
 
-        buttonFotos = findViewById(R.id.btnFotos)
-        buttonConquistas = findViewById(R.id.btnConquistas)
         buttonFotos.setOnClickListener {
             Log.d("PerfilActivity", "Clicou no botão Fotos")
             exibirFotosUsuario(viewedUserId)
@@ -70,35 +68,38 @@ class PerfilActivity : AppCompatActivity() {
             Log.d("PerfilActivity", "Clicou no botão Conquistas")
             exibirConquistasUsuario(viewedUserId)
         }
-
+        buttonTerminarSessao.setOnClickListener{
+            Log.d("PerfilActivity", "Clicou no botão Terminar Sessão")
+            terminarSessao()
+        }
         // Verificar se um userId foi passado como extra
         val userId = intent.getStringExtra("userId")
-        if (userId != null) {
-            viewedUserId = userId
-            exibirInformacoesUsuario(userId)
-            exibirFotosUsuario(userId)
-            exibirConquistasUsuario(userId)
-            atualizarVisualizacoesPerfil(userId)
-        } else {
-            viewedUserId = currentUser.uid
-            exibirInformacoesUsuario(currentUser.uid)
-            exibirFotosUsuario(currentUser.uid)
-            exibirConquistasUsuario(currentUser.uid)
-        }
-        // Dentro da função onCreate() ou onResume()
+        viewedUserId = userId ?: currentUser.uid
+
+        // Display user information
+        exibirInformacoesUsuario(viewedUserId!!)
+        exibirFotosUsuario(viewedUserId!!)
+        exibirConquistasUsuario(viewedUserId!!)
+        atualizarVisualizacoesPerfil(viewedUserId!!)
+
+        // Seguir button logic
+        setupSeguirButton(viewedUserId!!)
+    }
+
+
+    private fun setupSeguirButton(userId: String) {
         val btnSeguir = findViewById<Button>(R.id.btnSeguir)
         val txtSeguidores = findViewById<TextView>(R.id.txtSeguidores)
 
-        if (viewedUserId != currentUser.uid) {
-            // Se visualizando o perfil de outro usuário, mostra o botão "Seguir"
+        if (userId != currentUser.uid) {
             btnSeguir.visibility = View.VISIBLE
 
-            // Verifica se o usuário logado já segue o usuário visualizado
-            val userDocRef = db.collection("users").document(viewedUserId!!)
+            val userDocRef = db.collection("users").document(userId)
             userDocRef.get().addOnSuccessListener { document ->
                 if (document != null && document.exists()) {
-                    val seguidores = (document.get("seguidores") as? List<String>) ?: emptyList()
+                    val seguidores = document.get("seguidores") as? List<String> ?: emptyList()
                     val jaSegue = seguidores.contains(currentUser.uid)
+
                     if (jaSegue) {
                         btnSeguir.text = "Seguindo"
                         btnSeguir.isEnabled = false
@@ -106,18 +107,19 @@ class PerfilActivity : AppCompatActivity() {
                         btnSeguir.text = "Seguir"
                         btnSeguir.isEnabled = true
                     }
+
                     // Atualiza o número de seguidores
-                    txtSeguidores.text = "${seguidores.size}"
+                    txtSeguidores.text = "Seguidores: ${seguidores.size}"
                 }
             }
 
-            // Configura o clique no botão "Seguir"
             btnSeguir.setOnClickListener {
                 userDocRef.update("seguidores", FieldValue.arrayUnion(currentUser.uid))
                     .addOnSuccessListener {
                         Log.d("PerfilActivity", "Usuário seguido com sucesso")
                         btnSeguir.text = "Seguindo"
                         btnSeguir.isEnabled = false
+
                         // Atualiza o número de seguidores
                         txtSeguidores.text = "Seguidores: ${txtSeguidores.text.split(": ")[1].toInt() + 1}"
                     }
@@ -125,31 +127,8 @@ class PerfilActivity : AppCompatActivity() {
                         Log.e("PerfilActivity", "Erro ao seguir usuário: $e")
                     }
             }
-        }
-
-    }
-
-    override fun onResume() {
-        super.onResume()
-        atualizarNumeroFotosTiradas()
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.toolbar_menu, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_logout -> {
-                terminarSessao()
-                true
-            }
-            R.id.action_edit_profile -> {
-                editarPerfil()
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
+        } else {
+            btnSeguir.visibility = View.GONE
         }
     }
 
@@ -167,7 +146,7 @@ class PerfilActivity : AppCompatActivity() {
                     val imageUri = document.getString("imageUri")
                     Picasso.get().load(imageUri).into(findViewById<ImageView>(R.id.imgPerfil))
 
-                    val visualizacoesPerfil = document.getLong("visualizacoes_perfil")
+                    val visualizacoesPerfil = document.getLong("visualizacoes_perfil") ?: 0
                     findViewById<TextView>(R.id.txtVisualizacoes).text = "$visualizacoesPerfil"
                 } else {
                     Log.e("PerfilActivity", "Documento do usuário não encontrado")
@@ -208,8 +187,8 @@ class PerfilActivity : AppCompatActivity() {
             }
     }
 
-    private fun atualizarNumeroFotosTiradas() {
-        val userDocRef = db.collection("users").document(currentUser.uid)
+    private fun atualizarNumeroFotosTiradas(userId: String) {
+        val userDocRef = db.collection("users").document(userId)
 
         userDocRef.get()
             .addOnSuccessListener { document ->
@@ -329,4 +308,3 @@ class PerfilActivity : AppCompatActivity() {
         }
     }
 }
-

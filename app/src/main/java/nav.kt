@@ -7,7 +7,12 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class BottomNavigationHandler(private val context: Context, private val bottomNavigationView: BottomNavigationView) {
 
-    fun setupWithNavigation(@IdRes cameraItemId: Int, @IdRes profileItemId: Int, @IdRes feedItemId: Int) {
+    fun setupWithNavigation(
+        @IdRes cameraItemId: Int,
+        @IdRes profileItemId: Int,
+        @IdRes feedItemId: Int,
+        @IdRes notificationItemId: Int
+    ) {
         bottomNavigationView.setOnNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
                 cameraItemId -> {
@@ -20,6 +25,10 @@ class BottomNavigationHandler(private val context: Context, private val bottomNa
                 }
                 feedItemId -> {
                     navigateToActivity(Social::class.java)
+                    true
+                }
+                notificationItemId -> {
+                    navigateToActivity(notificacao::class.java)
                     true
                 }
                 else -> false

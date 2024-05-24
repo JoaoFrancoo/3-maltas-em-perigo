@@ -31,7 +31,7 @@ class Social : AppCompatActivity() {
         bottomNavigationHandler = BottomNavigationHandler(this, findViewById(R.id.bottomNavigationView))
 
         // Configurar a navegação com os IDs dos itens do menu
-        bottomNavigationHandler.setupWithNavigation(R.id.navigation_camera, R.id.navigation_profile, R.id.navigation_feed)
+        bottomNavigationHandler.setupWithNavigation(R.id.navigation_camera, R.id.navigation_profile, R.id.navigation_feed, R.id.navigation_notification)
 
         // Consulta ao Firestore para buscar os dados dos usuários
         db.collection("users")
