@@ -199,7 +199,7 @@ class PerfilActivity : AppCompatActivity() {
                 }
             }
             .addOnFailureListener { e ->
-                Log.e("PerfilActivity", "Erro ao buscar as URLs das imagens: $e")
+                Log.e("PerfilActivity", "Erro ao buscar as URL das imagens: $e")
             }
     }
 
