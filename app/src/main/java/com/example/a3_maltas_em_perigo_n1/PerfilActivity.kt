@@ -4,18 +4,15 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.ktx.auth
@@ -35,10 +32,22 @@ class PerfilActivity : AppCompatActivity() {
     private lateinit var buttonConquistas: Button
     private lateinit var buttonTerminarSessao : Button
     private var viewedUserId: String? = null
-
+    private lateinit var bottomNavigationHandler: BottomNavigationHandler
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_perfil)
+
+        val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
+        bottomNavigationHandler = BottomNavigationHandler(this, bottomNavigationView)
+        bottomNavigationHandler.setupWithNavigation(
+            R.id.navigation_camera,
+            R.id.navigation_profile,
+            R.id.navigation_feed,
+            R.id.navigation_notification
+        )
+
+        // Atualizar item selecionado
+        bottomNavigationHandler.updateSelectedItem(R.id.navigation_profile)
 
         // Initialize Firebase Auth
         auth = Firebase.auth

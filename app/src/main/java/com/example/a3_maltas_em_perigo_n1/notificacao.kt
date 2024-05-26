@@ -6,6 +6,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -16,10 +17,19 @@ class notificacao : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
     private lateinit var textNoNotifications: TextView
-
+    private lateinit var bottomNavigationHandler: BottomNavigationHandler
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.notificacao)
+
+        val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
+        bottomNavigationHandler = BottomNavigationHandler(this, bottomNavigationView)
+        bottomNavigationHandler.setupWithNavigation(
+            R.id.navigation_camera,
+            R.id.navigation_profile,
+            R.id.navigation_feed,
+            R.id.navigation_notification
+        )
 
         auth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()

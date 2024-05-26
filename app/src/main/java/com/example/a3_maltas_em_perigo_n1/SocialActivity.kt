@@ -1,6 +1,9 @@
 package com.example.a3_maltas_em_perigo_n1
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.graphics.BitmapShader
 import android.graphics.Canvas
@@ -13,6 +16,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.firestore.FirebaseFirestore
 import com.squareup.picasso.Picasso
 import com.squareup.picasso.Transformation
@@ -20,23 +24,53 @@ import com.squareup.picasso.Transformation
 class Social : AppCompatActivity() {
 
     private val db = FirebaseFirestore.getInstance()
-
     private lateinit var bottomNavigationHandler: BottomNavigationHandler
+    private lateinit var linearLayout: LinearLayout
+
+    private val broadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            loadFeed()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.social)
 
-        // Inicialize o BottomNavigationHandler passando o contexto e a BottomNavigationView
-        bottomNavigationHandler = BottomNavigationHandler(this, findViewById(R.id.bottomNavigationView))
+        val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
+        bottomNavigationHandler = BottomNavigationHandler(this, bottomNavigationView)
+        bottomNavigationHandler.setupWithNavigation(
+            R.id.navigation_camera,
+            R.id.navigation_profile,
+            R.id.navigation_feed,
+            R.id.navigation_notification
+        )
 
-        // Configurar a navegação com os IDs dos itens do menu
-        bottomNavigationHandler.setupWithNavigation(R.id.navigation_camera, R.id.navigation_profile, R.id.navigation_feed, R.id.navigation_notification)
+        // Atualizar item selecionado
+        bottomNavigationHandler.updateSelectedItem(R.id.navigation_feed)
 
-        // Consulta ao Firestore para buscar os dados dos usuários
+        linearLayout = findViewById(R.id.linear_layout)
+
+        // Carregar o feed pela primeira vez
+        loadFeed()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val filter = IntentFilter("com.example.ACTION_IMAGE_UPLOADED")
+        registerReceiver(broadcastReceiver, filter)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        unregisterReceiver(broadcastReceiver)
+    }
+
+    private fun loadFeed() {
         db.collection("users")
             .get()
             .addOnSuccessListener { result ->
+                linearLayout.removeAllViews()  // Limpar o layout antes de adicionar novos itens
                 // Exibir as fotos dos usuários
                 for (document in result.documents) {
                     val photoUrls = document["photoUrl"] as List<String>?
@@ -47,86 +81,107 @@ class Social : AppCompatActivity() {
                     photoUrls?.forEach { photoUrl ->
                         Log.d("PhotoURL", photoUrl)
 
-                        // Criar um CardView para envolver todas as informações do usuário e a imagem postada
-                        val cardView = CardView(this)
-                        val cardViewLayoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT
-                        )
-                        cardViewLayoutParams.setMargins(0, 0, 0, 16) // Adiciona margem inferior
-                        cardView.layoutParams = cardViewLayoutParams
-                        cardView.cardElevation = 4f // Define a elevação do CardView
+                        // Consulta para obter o ID do documento da coleção "infos"
+                        db.collection("users").document(userId).collection("infos")
+                            .whereEqualTo("photoUrl", photoUrl)
+                            .get()
+                            .addOnSuccessListener { infoResult ->
+                                for (infoDocument in infoResult.documents) {
+                                    val infoId = infoDocument.id // ID do documento da coleção "infos"
+                                    val additionalInfo = infoDocument.getString("additionalInfo")
+                                    // Criar um CardView para envolver todas as informações do usuário e a imagem postada
+                                    val cardView = CardView(this)
+                                    val cardViewLayoutParams = LinearLayout.LayoutParams(
+                                        LinearLayout.LayoutParams.MATCH_PARENT,
+                                        LinearLayout.LayoutParams.WRAP_CONTENT
+                                    )
+                                    cardViewLayoutParams.setMargins(0, 0, 0, 16) // Adiciona margem inferior
+                                    cardView.layoutParams = cardViewLayoutParams
+                                    cardView.cardElevation = 4f // Define a elevação do CardView
 
-                        // Layout principal dentro do CardView
-                        val layout = LinearLayout(this)
-                        layout.orientation = LinearLayout.VERTICAL
-                        val layoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT
-                        )
-                        layoutParams.setMargins(16, 16, 16, 16) // Adiciona margem
-                        layout.layoutParams = layoutParams
+                                    // Layout principal dentro do CardView
+                                    val layout = LinearLayout(this)
+                                    layout.orientation = LinearLayout.VERTICAL
+                                    val layoutParams = LinearLayout.LayoutParams(
+                                        LinearLayout.LayoutParams.MATCH_PARENT,
+                                        LinearLayout.LayoutParams.WRAP_CONTENT
+                                    )
+                                    layoutParams.setMargins(16, 16, 16, 16) // Adiciona margem
+                                    layout.layoutParams = layoutParams
 
-                        // Layout para imagem de perfil e nome de usuário
-                        val userProfileLayout = LinearLayout(this)
-                        userProfileLayout.orientation = LinearLayout.HORIZONTAL
-                        val userProfileLayoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT
-                        )
-                        userProfileLayoutParams.setMargins(0, 0, 0, 16) // Adiciona margem inferior
-                        userProfileLayout.layoutParams = userProfileLayoutParams
+                                    // Layout para imagem de perfil e nome de usuário
+                                    val userProfileLayout = LinearLayout(this)
+                                    userProfileLayout.orientation = LinearLayout.HORIZONTAL
+                                    val userProfileLayoutParams = LinearLayout.LayoutParams(
+                                        LinearLayout.LayoutParams.MATCH_PARENT,
+                                        LinearLayout.LayoutParams.WRAP_CONTENT
+                                    )
+                                    userProfileLayoutParams.setMargins(0, 0, 0, 16) // Adiciona margem inferior
+                                    userProfileLayout.layoutParams = userProfileLayoutParams
 
-                        // Adicionar a imagem de perfil do usuário
-                        val userProfileImageView = ImageView(this)
-                        val userProfileImageParams = LinearLayout.LayoutParams(
-                            150, // Ajuste o tamanho da imagem de perfil conforme necessário
-                            150
-                        )
-                        userProfileImageView.layoutParams = userProfileImageParams
-                        Picasso.get().load(userProfilePhotoUrl).transform(CircleTransformation()).into(userProfileImageView) // Carrega a imagem de perfil e aplica a transformação
-                        userProfileImageView.setOnClickListener {
+                                    // Adicionar a imagem de perfil do usuário
+                                    val userProfileImageView = ImageView(this)
+                                    val userProfileImageParams = LinearLayout.LayoutParams(
+                                        150, // Ajuste o tamanho da imagem de perfil conforme necessário
+                                        150
+                                    )
+                                    userProfileImageView.layoutParams = userProfileImageParams
+                                    Picasso.get().load(userProfilePhotoUrl)
+                                        .into(userProfileImageView) // Carrega a imagem de perfil e aplica a transformação
+                                    userProfileImageView.setOnClickListener {
+                                        val userId = document.id
+                                        val intent = Intent(this@Social, PerfilActivity::class.java)
+                                        intent.putExtra("userId", userId)
+                                        startActivity(intent)
+                                    }
+                                    userProfileLayout.addView(userProfileImageView)
 
-                            val userId= document.id
+                                    // Adicionar o nome de usuário
+                                    val usernameTextView = TextView(this)
+                                    usernameTextView.text = userName
+                                    val usernameLayoutParams = LinearLayout.LayoutParams(
+                                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                                        LinearLayout.LayoutParams.WRAP_CONTENT
+                                    )
+                                    usernameLayoutParams.setMargins(16, 0, 0, 0) // Adiciona margem à esquerda
+                                    usernameTextView.layoutParams = usernameLayoutParams
+                                    usernameTextView.setOnClickListener {
+                                        val intent = Intent(this@Social, PerfilActivity::class.java)
+                                        intent.putExtra("userId", userId)
+                                        startActivity(intent)
+                                    }
+                                    userProfileLayout.addView(usernameTextView)
 
-                            val intent = Intent(this@Social, PerfilActivity::class.java)
-                            intent.putExtra("userId", userId)
-                            startActivity(intent)
-                        }
-                        userProfileLayout.addView(userProfileImageView)
+                                    layout.addView(userProfileLayout)
 
-                        // Adicionar o nome de usuário
-                        val usernameTextView = TextView(this)
-                        usernameTextView.text = userName
-                        val usernameLayoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT
-                        )
-                        usernameLayoutParams.setMargins(16, 0, 0, 0) // Adiciona margem à esquerda
-                        usernameTextView.layoutParams = usernameLayoutParams
-                        usernameTextView.setOnClickListener {
-                            val intent = Intent(this@Social, PerfilActivity::class.java)
-                            intent.putExtra("userId", userId)
-                            startActivity(intent)
-                        }
-                        userProfileLayout.addView(usernameTextView)
+                                    // Adicionar a imagem postada
+                                    val imageView = ImageView(this)
+                                    val imageParams = LinearLayout.LayoutParams(
+                                        LinearLayout.LayoutParams.MATCH_PARENT,
+                                        LinearLayout.LayoutParams.WRAP_CONTENT
+                                    )
+                                    imageView.layoutParams = imageParams
+                                    Picasso.get().load(photoUrl)
+                                        .into(imageView) // Carrega a imagem postada
+                                    layout.addView(imageView)
 
-                        layout.addView(userProfileLayout)
+                                    // Adicionar um OnClickListener para abrir a PostDetailsActivity ao clicar na imagem
+                                    imageView.setOnClickListener {
+                                        val intent = Intent(this@Social, Detalhespost::class.java)
+                                        intent.putExtra("postId", document.id) // Passa o ID do documento do post
+                                        intent.putExtra("infoId", infoId) // Passa o ID do documento da coleção "infos"
+                                        intent.putExtra("userId", userId)
+                                        intent.putExtra("userName", userName)
+                                        intent.putExtra("userProfileImageUrl", userProfilePhotoUrl)
+                                        intent.putExtra("postImageUrl", photoUrl)
+                                        intent.putExtra("additionalInfo", additionalInfo) // Adicione esta linha para passar o additionalInfo
+                                        startActivity(intent)
+                                    }
 
-                        // Adicionar a imagem postada
-                        val imageView = ImageView(this)
-                        val imageParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT
-                        )
-                        imageView.layoutParams = imageParams
-                        Picasso.get().load(photoUrl).into(imageView) // Carrega a imagem postada
-                        layout.addView(imageView)
-
-                        cardView.addView(layout) // Adicione o layout principal ao CardView
-                        val linearLayout = findViewById<LinearLayout>(R.id.linear_layout)
-                        linearLayout.addView(cardView) // Adicione o CardView ao layout principal
-
+                                    cardView.addView(layout) // Adicione o layout principal ao CardView
+                                    linearLayout.addView(cardView) // Adicione o CardView ao layout principal
+                                }
+                            }
                     }
                 }
             }
@@ -161,6 +216,5 @@ class Social : AppCompatActivity() {
         override fun key(): String {
             return "circle"
         }
-
     }
 }

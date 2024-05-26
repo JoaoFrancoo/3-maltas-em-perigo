@@ -24,6 +24,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.example.a3_maltas_em_perigo_n1.ml.ModelUnquant
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FieldValue
@@ -51,10 +52,23 @@ class DetectarImagem : AppCompatActivity() {
     private val imageSize = 224
     private var numFotosTiradas: Int = 0
     private val REQUEST_CODE_POST_NOTIFICATIONS = 101
+    private lateinit var bottomNavigationHandler: BottomNavigationHandler
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.detectarimagem)
+
+        val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
+        bottomNavigationHandler = BottomNavigationHandler(this, bottomNavigationView)
+        bottomNavigationHandler.setupWithNavigation(
+            R.id.navigation_camera,
+            R.id.navigation_profile,
+            R.id.navigation_feed,
+            R.id.navigation_notification
+        )
+
+        // Atualizar item selecionado
+        bottomNavigationHandler.updateSelectedItem(R.id.navigation_camera)
 
         // Verifique e solicite a permissão de notificações se necessário
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -82,10 +96,6 @@ class DetectarImagem : AppCompatActivity() {
             } else {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 100)
             }
-        }
-
-        findViewById<TextView>(R.id.textPerfil).setOnClickListener {
-            startActivity(Intent(this, PerfilActivity::class.java))
         }
     }
 
@@ -131,7 +141,8 @@ class DetectarImagem : AppCompatActivity() {
             val confidences = outputFeature0.floatArray
             val maxPos = confidences.indices.maxByOrNull { confidences[it] } ?: -1
             val classes = arrayOf("Peluche", "Teclado")
-            result.text = classes.getOrNull(maxPos) ?: "Unknown"
+            val resultText = classes.getOrNull(maxPos) ?: "Unknown"
+            result.text = resultText
 
             confidence.text = classes.indices.joinToString("\n") { i ->
                 String.format("%s: %.1f%%", classes[i], confidences[i] * 100)
@@ -142,7 +153,7 @@ class DetectarImagem : AppCompatActivity() {
                     Log.d("IndexActivity", "Nome do usuário: $nomeUsuario")
                 } ?: Log.e("IndexActivity", "Nome do usuário não está definido.")
 
-                showSaveImageDialog(user, image)
+                showSaveImageDialog(user, image, resultText)
             }
 
         } catch (e: IOException) {
@@ -150,11 +161,28 @@ class DetectarImagem : AppCompatActivity() {
         }
     }
 
-    private fun showSaveImageDialog(user: FirebaseUser, image: Bitmap) {
+    private fun showSaveImageDialog(user: FirebaseUser, image: Bitmap, resultText: String) {
         AlertDialog.Builder(this)
             .setTitle("Guardar Imagem")
             .setMessage("Deseja guardar esta imagem no seu perfil?")
-            .setPositiveButton("Sim") { _, _ -> saveImageToProfile(user, image) }
+            .setPositiveButton("Sim") { _, _ ->
+                saveImageToProfile(user, image, resultText)
+            }
+            .setNegativeButton("Não", null)
+            .create()
+            .show()
+    }
+
+    private fun askForAdditionalInfo(user: FirebaseUser, resultText: String, photoUrl: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Informações Adicionais")
+            .setMessage("Você gostaria de fornecer mais informações sobre o $resultText?")
+            .setPositiveButton("Sim") { _, _ ->
+                val intent = Intent(this, infosadicionais::class.java)
+                intent.putExtra("RESULT_TEXT", resultText)
+                intent.putExtra("PHOTO_URL", photoUrl)
+                startActivity(intent)
+            }
             .setNegativeButton("Não", null)
             .create()
             .show()
@@ -165,8 +193,11 @@ class DetectarImagem : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 1 && resultCode == RESULT_OK) {
             val imageBitmap = data?.extras?.get("data") as Bitmap
-            val scaledImage = Bitmap.createScaledBitmap(imageBitmap, imageSize, imageSize, false)
-            imageView.setImageBitmap(scaledImage)
+            // Exibir a imagem original no ImageView
+            imageView.setImageBitmap(imageBitmap)
+
+            // Redimensionar com qualidade para classificação
+            val scaledImage = Bitmap.createScaledBitmap(imageBitmap, imageSize, imageSize, true)
             classifyImage(scaledImage)
 
             numFotosTiradas++
@@ -174,7 +205,7 @@ class DetectarImagem : AppCompatActivity() {
         }
     }
 
-    private fun saveImageToProfile(user: FirebaseUser, image: Bitmap) {
+    private fun saveImageToProfile(user: FirebaseUser, image: Bitmap, resultText: String) {
         val imageFileName = "${user.uid}_${System.currentTimeMillis()}.jpg"
         val storageRef = FirebaseStorage.getInstance().reference.child("imagensUser/$imageFileName")
 
@@ -186,6 +217,11 @@ class DetectarImagem : AppCompatActivity() {
             .addOnSuccessListener {
                 storageRef.downloadUrl.addOnSuccessListener { uri ->
                     updateUserProfileWithImageUrl(user, uri.toString())
+                    askForAdditionalInfo(user, resultText, uri.toString())
+
+                    // Enviar o broadcast para atualizar o feed
+                    val intent = Intent("com.example.ACTION_IMAGE_UPLOADED")
+                    sendBroadcast(intent)
                 }
             }
             .addOnFailureListener { exception ->
@@ -193,6 +229,8 @@ class DetectarImagem : AppCompatActivity() {
                 Toast.makeText(this, "Erro ao fazer upload da imagem.", Toast.LENGTH_SHORT).show()
             }
     }
+
+
 
     private fun updateUserProfileWithImageUrl(user: FirebaseUser, imageUrl: String) {
         db.collection("users").document(user.uid)
@@ -214,98 +252,89 @@ class DetectarImagem : AppCompatActivity() {
             }
             .addOnFailureListener { exception ->
                 Log.e(TAG, "Falha ao obter o documento do usuário: $exception")
-                Toast.makeText(this, "Erro ao obter documento do usuário.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Erro ao salvar nova imagem do perfil.", Toast.LENGTH_SHORT).show()
             }
     }
 
     private fun saveNotificationToFollowers(user: FirebaseUser, message: String) {
-        val userDocRef = db.collection("users").document(user.uid)
+        db.collection("users").document(user.uid)
+            .get()
+            .addOnSuccessListener { documentSnapshot ->
+                val followers = documentSnapshot.get("followers") as? List<String> ?: emptyList()
 
-        userDocRef.get().addOnSuccessListener { document ->
-            if (document != null && document.exists()) {
-                val seguidores = document.get("seguidores") as? List<String> ?: emptyList()
-
-                seguidores.forEach { seguidorId ->
-                    val notification = hashMapOf(
-                        "message" to message,
-                        "timestamp" to System.currentTimeMillis()
-                    )
-
-                    db.collection("users").document(seguidorId).collection("notifications")
-                        .add(notification)
+                followers.forEach { followerId ->
+                    db.collection("users").document(followerId)
+                        .update("notifications", FieldValue.arrayUnion(message))
                         .addOnSuccessListener {
-                            Log.d(TAG, "Notificação enviada para o seguidor $seguidorId com sucesso.")
+                            Log.d(TAG, "Notificação salva para o seguidor $followerId.")
+                            showNotification(message)
                         }
                         .addOnFailureListener { exception ->
-                            Log.e(TAG, "Falha ao enviar notificação para o seguidor $seguidorId: $exception")
+                            Log.e(TAG, "Falha ao salvar notificação para o seguidor $followerId: $exception")
                         }
                 }
-            } else {
-                Log.e(TAG, "Documento do usuário não encontrado.")
             }
-        }.addOnFailureListener { exception ->
-            Log.e(TAG, "Falha ao obter documento do usuário: $exception")
-        }
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Falha ao obter seguidores do usuário: $exception")
+            }
     }
 
-    private fun concederConquistaTirarFoto(user: FirebaseUser, numFotosTiradas: Int) {
-        val conquistas = when (numFotosTiradas) {
-            1 -> listOf("Conquista 1")
-            5 -> listOf("Conquista 2")
-            10 -> listOf("Conquista 3")
-            else -> emptyList()
-        }
-
-        if (conquistas.isNotEmpty()) {
-            val userDocRef = db.collection("users").document(user.uid)
-            conquistas.forEach { conquista ->
-                userDocRef.update("conquistas", FieldValue.arrayUnion(conquista))
-                    .addOnSuccessListener {
-                        Log.d(TAG, "Conquista concedida com sucesso: $conquista")
-                        sendLocalNotification(user, "Você ganhou a conquista: $conquista")
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e(TAG, "Erro ao conceder conquista: $conquista, ${e.message}")
-                    }
-            }
-        }
-    }
-
-    private fun sendLocalNotification(user: FirebaseUser, message: String) {
-        val intent = Intent(this, DetectarImagem::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    private fun showNotification(message: String) {
+        val intent = Intent(this, IndexActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
 
         val builder = NotificationCompat.Builder(this, "CONQUISTA_CHANNEL_ID")
             .setSmallIcon(R.drawable.ic_launcher)
-            .setContentTitle("Nova Conquista!")
+            .setContentTitle("Nova notificação")
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 
         with(NotificationManagerCompat.from(this)) {
-            notify(2, builder.build())
-        }
-    }
-}
-
-fun Bitmap.toByteBuffer(imageSize: Int): ByteBuffer {
-    val byteBuffer = ByteBuffer.allocateDirect(4 * imageSize * imageSize * 3)
-    byteBuffer.order(ByteOrder.nativeOrder())
-
-    val intValues = IntArray(imageSize * imageSize)
-    getPixels(intValues, 0, width, 0, 0, width, height)
-    var pixel = 0
-    for (i in 0 until imageSize) {
-        for (j in 0 until imageSize) {
-            val value = intValues[pixel++]
-            byteBuffer.putFloat(((value shr 16) and 0xFF) * (1f / 255f))
-            byteBuffer.putFloat(((value shr 8) and 0xFF) * (1f / 255f))
-            byteBuffer.putFloat((value and 0xFF) * (1f / 255f))
+            if (ActivityCompat.checkSelfPermission(this@DetectarImagem, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                return
+            }
+            notify(1, builder.build())
         }
     }
 
-    return byteBuffer
+    private fun concederConquistaTirarFoto(user: FirebaseUser, numFotosTiradas: Int) {
+        val db = FirebaseFirestore.getInstance()
+        val userRef = db.collection("users").document(user.uid)
+        userRef.get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val conquistas = document.get("conquistas") as? ArrayList<String> ?: ArrayList()
+                    if (numFotosTiradas >= 1 && !conquistas.contains("Tirou a Primeira Foto")) {
+                        conquistas.add("Tirou a Primeira Foto")
+                        userRef.update("conquistas", conquistas)
+                        showNotification("Parabéns! Você conquistou: Tirou a Primeira Foto")
+                    }
+                }
+            }
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Erro ao conceder conquista: $exception")
+            }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        model.close()
+    }
+
+    private fun Bitmap.toByteBuffer(imageSize: Int): ByteBuffer {
+        val byteBuffer = ByteBuffer.allocateDirect(4 * imageSize * imageSize * 3)
+        byteBuffer.order(ByteOrder.nativeOrder())
+
+        val intValues = IntArray(imageSize * imageSize)
+        this.getPixels(intValues, 0, this.width, 0, 0, this.width, this.height)
+
+        for (pixelValue in intValues) {
+            byteBuffer.putFloat(((pixelValue shr 16) and 0xFF) * (1f / 255f))
+            byteBuffer.putFloat(((pixelValue shr 8) and 0xFF) * (1f / 255f))
+            byteBuffer.putFloat((pixelValue and 0xFF) * (1f / 255f))
+        }
+        return byteBuffer
+    }
 }
